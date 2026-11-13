@@ -2,3 +2,7 @@
 __pycache__/
 learner/
 .venv/
+.jupyter-token
+.jupyter/
+.jupyter_ystore.db
+.ipynb_checkpoints/

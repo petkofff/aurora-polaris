@@ -3,7 +3,26 @@
     "allow": [
       "Bash(pdftotext *)",
       "Bash(.venv/bin/python learner/lab/*)",
-      "Bash(python3 learner/lab/*)"
+      "Bash(python3 learner/lab/*)",
+      "mcp__jupyter__list_files",
+      "mcp__jupyter__list_kernels",
+      "mcp__jupyter__list_notebooks",
+      "mcp__jupyter__use_notebook",
+      "mcp__jupyter__unuse_notebook",
+      "mcp__jupyter__read_notebook",
+      "mcp__jupyter__read_cell",
+      "mcp__jupyter__insert_cell",
+      "mcp__jupyter__insert_execute_code_cell",
+      "mcp__jupyter__execute_cell"
+    ],
+    "deny": [
+      "mcp__jupyter__delete_cell",
+      "mcp__jupyter__overwrite_cell_source",
+      "mcp__jupyter__edit_cell_source",
+      "mcp__jupyter__move_cell",
+      "mcp__jupyter__clear_cell_output",
+      "mcp__jupyter__execute_code",
+      "mcp__jupyter__connect_to_jupyter"
     ]
   }
 }

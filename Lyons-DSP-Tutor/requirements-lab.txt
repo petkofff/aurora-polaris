@@ -1,0 +1,10 @@
+# Lab and notebook environment for the tutor. Tested with Python 3.14.
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements-lab.txt
+numpy==2.5.4
+scipy==1.18.1
+matplotlib==3.11.2
+ipykernel==7.4.0
+jupyterlab==4.6.6
+jupyter-collaboration==5.0.4
+jupyter-mcp-tools==0.1.8
+jupyter-mcp-server==2.2.5
