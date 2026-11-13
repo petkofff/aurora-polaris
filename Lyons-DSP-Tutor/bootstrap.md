@@ -7,12 +7,13 @@ normal sessions follow `CLAUDE.md`.
 Check that `Understanding-Digital-Signal-Processing.pdf` is in this folder. If it isn't, tell the
 learner it's required and stop.
 
-Check the tools: `pdftotext -v`, `python3 --version` (3.10+), and whether numpy, scipy and
-matplotlib import. If `.venv/bin/python` exists, check that one first. If they're missing, ask the
-learner whether you may create a virtual environment in this folder:
-`python3 -m venv .venv && .venv/bin/pip install numpy scipy matplotlib`.
-If they decline, continue, and tell them that labs and your numeric checks won't work until the
-packages are installed. Record the result under **Lab setup** in `learner/profile.md`.
+Check the tools: `pdftotext -v`, `python3 --version`, and whether numpy, scipy, matplotlib,
+jupyterlab and jupyter_mcp_server import. If `.venv/bin/python` exists, check that one first. If
+they're missing, ask the learner whether you may create a virtual environment in this folder
+with the pinned packages:
+`python3 -m venv .venv && .venv/bin/pip install -r requirements-lab.txt`.
+If they decline, continue, and tell them that labs, your numeric checks and the notebook won't
+work until the packages are installed. Record the result under **Lab setup** in `learner/profile.md`.
 
 ### Textbook map
 The course needs `learner/textbook-mapping.md`, the section → PDF page map. If the learner
@@ -61,6 +62,9 @@ Then ask, **a few questions at a time** (don't send one big form):
    Ask how confident they are with each, roughly.
 4. Programming: which languages, and how comfortable. Do they want labs in Python (default;
    you can run it), or MATLAB/Octave or C (only if installed here)?
+   Then: do they want to work in a **JupyterLab notebook** next to the terminal (rendered math,
+   inline plots, answers typed in cells; recommended if the packages are installed), or in the
+   terminal only? See §1.1.
 5. Previous DSP or signals exposure (none / a course / at work; how long ago).
 6. Why they're learning and what for. Offer tracks: **general/theory**, **audio**,
    **radio/SDR/communications**, **embedded/fixed-point**, **exam or interview**. Ask for a target date if there is one.
@@ -69,6 +73,16 @@ Then ask, **a few questions at a time** (don't send one big form):
 9. Correction style: point out mistakes immediately (default), or let them finish a problem first.
    Hints: how quickly they want them.
 10. Their application area, job or projects — used to personalize examples and labs.
+
+### 1.1 Notebook setup
+If they want the notebook and the packages are installed:
+- Tell them to start JupyterLab in a second terminal in this folder: `jupyter/start-lab.sh`
+  (it opens in the browser). Then they approve the `jupyter` server if Claude Code asks, or
+  reconnect it with `/mcp` if it was started before JupyterLab.
+- Check the connection with `list_notebooks`. Record **Notebook: JupyterLab** in the profile
+  either way. If the check fails, say that it can be fixed at the start of the next session and
+  continue in the terminal.
+- Keep the interview and placement in the terminal. The notebook starts with the first section.
 
 ## 2. Placement and plan
 - **Prerequisites:** ask 5–6 quick items: multiply two complex numbers in polar form, write
@@ -104,7 +118,8 @@ Get today's date with `date +%F`. Then create:
 - `learner/log/` directory and `learner/log/YYYY-MM-DD.md` for this bootstrap session (format:
   `CLAUDE.md` §4.3).
 
-Then ask whether they want to start the first section now. If yes, continue with `CLAUDE.md` §2 Step 3.
+Then ask whether they want to start the first section now. If yes, continue with `CLAUDE.md` §2
+Step 3, in notebook mode (`CLAUDE.md` §6) if they chose the notebook and it's connected.
 
 ## 4. Templates
 
@@ -136,6 +151,7 @@ Then ask whether they want to start the first section now. If yes, continue with
 ## Lab setup
 - **Python:** `.venv/bin/python` (numpy, scipy, matplotlib) · or `python3` · or not available
 - **Lab language:** Python · other (toolchain installed?)
+- **Notebook:** JupyterLab · terminal only
 
 ## Current level
 - (one or two lines; update as they progress)

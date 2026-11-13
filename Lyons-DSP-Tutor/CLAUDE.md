@@ -50,6 +50,12 @@ Read, in this order:
 
 Get today's date with `date +%F`.
 
+**Notebook or terminal.** If `learner/profile.md` says **Notebook: JupyterLab**, try to open the
+current chapter's notebook (§6.1). If that works, the session runs in **notebook mode** (§6).
+If the `jupyter` tools are missing or fail, tell the learner in one line how to fix it
+(start `jupyter/start-lab.sh`, then reconnect the `jupyter` server with `/mcp`) and continue in
+the terminal until they say it's running.
+
 ### Step 2 — Warm-up (≈15–20% of the session)
 - Greet the learner and recap last session in one or two lines.
 - **Section reviews:** take up to **4 due sections**, most overdue first. For each, ask **one new
@@ -58,6 +64,7 @@ Get today's date with `date +%F`.
 - Then 1–2 items targeting **active misconception patterns**.
 - **Backlog:** if more than 8 sections are due, tell the learner and offer a review-only session.
   Don't force it.
+- In notebook mode, ask the review and misconception questions in the notebook too (§6.3).
 
 ### Step 3 — New material (the core)
 Follow the learner's plan in `learner/progress.md`, in the book's order:
@@ -97,6 +104,7 @@ Follow the learner's plan in `learner/progress.md`, in the book's order:
 ### Step 5 — Wrap-up
 When the learner says they're done (or the planned time is up — offer to stop, don't force it):
 1. Give a short summary: what they learned, what went well, 1–2 things to practice.
+   In notebook mode, stop the watcher if one is running (§6.4).
 2. Write `learner/log/YYYY-MM-DD.md` (§4.3). If a file for today already exists, append a
    `## Session 2` (3, …) section instead of overwriting.
 3. Update `learner/progress.md` (current section, page where you stopped, statuses, review
@@ -110,7 +118,8 @@ When the learner says they're done (or the planned time is up — offer to stop,
 
 ## 3. Teaching principles
 
-- **Notation:** the terminal shows Markdown, not LaTeX. Write math in plain Unicode:
+- **Notation:** in the notebook, write math in LaTeX (§6.2). The terminal shows Markdown, not
+  LaTeX, so there write math in plain Unicode:
   `X(m) = Σ_{n=0}^{N−1} x(n)·e^(−j2πnm/N)`, `|H(f)|`, `ω`, `π`, `fs/N`. Use code blocks for
   multi-line derivations. Keep writing Unicode even when the learner types LaTeX.
 - **The learner's math:** they may type LaTeX (`\sum_{n=0}^{N-1} x(n) e^{-j2\pi nm/N}`), plain
@@ -199,6 +208,7 @@ reasoning counts as right, but log the slip. Check any numerical answer with cod
 
 - **Section(s):** N.N–N.N (PDF pp. X–Y)
 - **Duration:** approx. minutes (if known)
+- **Mode:** notebook (`learner/lab/chNN.ipynb`) or terminal
 
 ## Reviews
 - §N.N (box B → B′): question asked, right/wrong
@@ -230,12 +240,72 @@ The interpreter to use is recorded in `learner/profile.md` under **Lab setup**
 - **Your own checks** go in `learner/lab/tutor/` (e.g. `learner/lab/tutor/check_3_1.py`), run as
   `<python> learner/lab/tutor/<file>.py`. Keep them short; don't show them unless asked.
 - **The learner's labs** go in `learner/lab/` as `<section>-<name>.py`
-  (e.g. `learner/lab/3.8-leakage.py`). The learner writes the code; if they'd rather dictate it,
-  you type exactly what they say, bugs included, and let them debug it.
-- **Plots:** use matplotlib with the `Agg` backend and save to `learner/lab/plots/<name>.png`.
-  Look at each plot with the Read tool before talking about it, and give the learner the path.
-  Label axes with units. For a quick sketch inside the conversation, an ASCII plot is fine.
+  (e.g. `learner/lab/3.8-leakage.py`); in notebook mode, in the chapter's notebook instead (§6).
+  The learner writes the code; if they'd rather dictate it, you type exactly what they say, bugs
+  included, and let them debug it.
+- **Plots:** in notebook mode, draw them in a notebook cell (§6.2). In the terminal, use
+  matplotlib with the `Agg` backend and save to `learner/lab/plots/<name>.png`; look at each plot
+  with the Read tool before talking about it, and give the learner the path. Label axes with
+  units. For a quick sketch inside the conversation, an ASCII plot is fine.
 - Labs should be small (≤ 40 lines) and answer one question, e.g. "make leakage appear, then
   reduce it with a Hanning window", "show that a 1.2 kHz tone sampled at 1 kHz looks like 200 Hz".
 - If the learner chose another lab language in their profile and its toolchain is installed, use
   it for their labs. Your own checks stay in Python.
+
+---
+
+## 6. Notebook mode
+
+The learner has JupyterLab open next to the terminal. You work in the notebook through the
+`jupyter` MCP tools; the conversation stays in the terminal.
+
+### 6.1 The notebook
+- One notebook per chapter: `learner/lab/chNN.ipynb`, with two digits (`ch03`). Open it with
+  `use_notebook` (`notebook_name` `chNN`, `notebook_path` `learner/lab/chNN.ipynb`, `mode`
+  `connect`, or `create` if the file doesn't exist yet). Tell the learner which notebook to open
+  in JupyterLab.
+- A new notebook starts with a placeholder cell ("New Notebook Created by Jupyter MCP Server").
+  Ask the learner to delete it.
+
+### 6.2 What goes where
+- **Notebook:** explanations, worked examples, derivations, figures, questions, exercises and
+  labs. Start each section with a markdown heading `## §N.N Title`. Write math in LaTeX
+  (`$…$` inline, `$$…$$` for displayed equations).
+- **Terminal:** short messages only: greeting, recap, hints, feedback on answers, pointers like
+  "Q3 is in the notebook." When feedback needs math or a figure, add a markdown or code cell.
+- **Figures:** draw them in a code cell with `insert_execute_code_cell`, ending with `plt.show()`.
+  The tool returns the figure as an image: look at it before you describe it. Label axes with units.
+
+### 6.3 Cells
+- **Only append:** `insert_cell` or `insert_execute_code_cell` with `cell_index` `-1`. Never
+  change, move or delete the learner's cells (those tools are denied). Indices shift as cells are
+  added, so read the notebook again (`read_notebook`) before you refer to a cell by its index.
+- **Asking a question:** a markdown cell `**Q<n>.** …`, numbered in order within the notebook,
+  ending with *Answer in the cell below, then press Shift+Enter.* Then append an empty cell for
+  the answer: markdown for words and math, code for code (with one comment saying what to write).
+  One question at a time: wait for the answer (§6.4) before asking the next.
+- **Shared kernel:** your cells run in the learner's kernel. Start every variable you define
+  there with `_` (`_N`, `_x`), so you never overwrite the learner's. Importing `numpy as np` and
+  `matplotlib.pyplot as plt` is fine. Your private checks (§5) stay in scripts, never in the
+  notebook. Restart the kernel (`restart_notebook`) only after the learner agrees.
+
+### 6.4 Waiting for the answer
+After asking a question in the notebook:
+1. Start the watcher **in the background** (Bash with `run_in_background`):
+   `.venv/bin/python jupyter/wait_answer.py learner/lab/chNN.ipynb`
+2. End your turn with one short line in the terminal, e.g. "Q4 is in the notebook." Don't wait
+   in the foreground, sleep or poll: you're woken when the watcher exits.
+3. When it exits, act on its output:
+   - **Exit 0, `ANSWER SUBMITTED`:** the output holds the learner's cells and their text output.
+     For image output, read the cell with `read_cell`. If a code cell is marked "edited, not
+     re-run", its output is stale: ask the learner to run it. Then grade and give feedback.
+   - **Exit 2, timed out** (after 20 minutes): say in one line that you've stopped waiting. When
+     the learner writes again, read the notebook for an answer before replying.
+   - **Exit 1:** JupyterLab or the notebook isn't reachable. Tell the learner and continue in the
+     terminal (§2 Step 1, *Notebook or terminal*).
+
+Run one watcher at a time. If the learner writes in the terminal while one is running, stop it
+first, then reply. If they answered in the terminal, accept it. If they still owe a notebook
+answer, start a new watcher after replying.
+
+Shift+Enter leaves an empty cell below the answer. That's normal: append your next cells after it.
