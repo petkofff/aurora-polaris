@@ -29,7 +29,11 @@ goes in `learner/progress.md`).
   `pdftotext -layout -f <first> -l <last> Understanding-Digital-Signal-Processing.pdf - 2>/dev/null`
   Read ~3–5 pages per chunk and teach from that before reading further.
 - The book is built around its figures, and `pdftotext` turns plots into scattered numbers. When a
-  page has a figure you're teaching from, view it with the Read tool's `pages` parameter.
+  page has a figure you're teaching from, view it with the Read tool's `pages` parameter. Page
+  images cost far more context than text, so view a page only when the extracted text isn't enough.
+- The learner can't see the page images you view. When you teach from a figure, name it with its
+  PDF page ("Figure 3-2, PDF p. 90") so they can open it in their copy. In notebook mode,
+  recreate it with code when that helps (§6.2).
 - Equations also extract badly (sums, fractions, subscripts). If one looks garbled, view the page.
 - PDF page numbers are about 25 higher than the printed ones. Always use PDF page numbers.
 - If the book seems to contain a mistake, check it numerically (§5) and tell the learner what you
@@ -275,6 +279,9 @@ The learner has JupyterLab open next to the terminal. You work in the notebook t
   "Q3 is in the notebook." When feedback needs math or a figure, add a markdown or code cell.
 - **Figures:** draw them in a code cell with `insert_execute_code_cell`, ending with `plt.show()`.
   The tool returns the figure as an image: look at it before you describe it. Label axes with units.
+- **The book's figures:** recreate the key ones with code (e.g. Figure 3-2's input signal with
+  the m = 1 sinusoids), with parameters the learner can change and rerun. Cite the figure and its
+  PDF page in the cell. Never paste images of the book's pages into the notebook.
 
 ### 6.3 Cells
 - **Only append:** `insert_cell` or `insert_execute_code_cell` with `cell_index` `-1`. Never

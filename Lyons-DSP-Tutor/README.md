@@ -22,7 +22,10 @@ where you answer and write code. Without JupyterLab, everything happens in the t
   ```sh
   python3 -m venv .venv && .venv/bin/pip install -r requirements-lab.txt
   ```
-- `pdftotext` from poppler (`poppler-utils` on Debian/Ubuntu, `poppler` on Arch/macOS Homebrew)
+- `pdftotext` from poppler (`poppler-utils` on Debian/Ubuntu, `poppler` on Arch/macOS Homebrew),
+  for the book's text. For figures and equations, which don't survive text extraction, the tutor
+  views the page as an image. It names the figure and PDF page so you can look too, and in the
+  notebook it redraws key figures with code.
 - The textbook PDF, saved in this folder as `Understanding-Digital-Signal-Processing.pdf`.
   It is **not** in the repo (`*.pdf` is gitignored).
 - Optional: `qpdf`, to read the PDF's bookmarks when the tutor builds the textbook map.
