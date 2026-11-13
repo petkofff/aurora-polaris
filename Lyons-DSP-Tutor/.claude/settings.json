@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pdftotext *)",
+      "Bash(.venv/bin/python learner/lab/*)",
+      "Bash(python3 learner/lab/*)"
+    ]
+  }
+}

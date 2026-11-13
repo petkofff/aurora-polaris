@@ -3,8 +3,8 @@
 These are instructions for **developing** Aurora Polaris. Start Claude Code at the root of the
 repo and ask it to read this file. They don't apply to tutoring sessions.
 
-Aurora Polaris is a suite of language tutors that run in Claude Code. Each tutor follows one
-textbook and lives in its own folder (`Madrigal-Spanish-Tutor/` is the first). See `README.md`
+Aurora Polaris is a suite of textbook tutors that run in Claude Code. Each tutor follows one
+textbook and lives in its own folder (`Madrigal-Spanish-Tutor/`, `Lyons-DSP-Tutor/`). See `README.md`
 for the layout and the rules for adding a tutor.
 
 ## Privacy: this repo is public
@@ -44,3 +44,15 @@ for the layout and the rules for adding a tutor.
   change to `vocab.py`.
 - To read the textbook, extract a few pages at a time with
   `pdftotext -layout -f <first> -l <last> "<pdf>" -`, never the whole PDF.
+
+## Lyons-DSP-Tutor
+
+- There is no tutor code yet. Section reviews live in the **Box** / **Next review** columns of
+  `learner/progress.md` (format in `CLAUDE.md` §4.2), not in a database. If that table turns out to
+  drift, a small standard-library script (like `vocab.py`) is the fix.
+- Labs and the tutor's numeric checks need numpy, scipy and matplotlib, usually in the tutor's
+  `.venv/` (gitignored). `.claude/settings.json` allows `pdftotext` and running scripts in
+  `learner/lab/`.
+- The PDF's bookmarks give PDF page numbers for every section
+  (`qpdf --json --json-key=outlines …`, field `destpageposfrom1`). `pdftotext` prints harmless
+  syntax errors on this PDF; send stderr to `/dev/null`.

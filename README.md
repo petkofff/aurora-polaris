@@ -1,15 +1,16 @@
 # Aurora Polaris
 
-A suite of language tutors that run in [Claude Code](https://claude.com/claude-code). Each tutor
+A suite of textbook tutors that run in [Claude Code](https://claude.com/claude-code). Each tutor
 follows one textbook, lesson by lesson, and remembers the learner between sessions through notes
-it keeps in a private folder: what they've covered, the mistakes they repeat, and the vocabulary
-that's due for review.
+it keeps in a private folder: what they've covered, the mistakes they repeat, and what's due
+for review.
 
 ## Tutors
 
-| Tutor | Language | Textbook |
+| Tutor | Subject | Textbook |
 |---|---|---|
 | [`Madrigal-Spanish-Tutor`](Madrigal-Spanish-Tutor/) | Spanish | *Madrigal's Magic Key to Spanish* (Margarita Madrigal, 1951) |
+| [`Lyons-DSP-Tutor`](Lyons-DSP-Tutor/) | Digital signal processing | *Understanding Digital Signal Processing*, 3rd ed. (Richard G. Lyons, 2011) |
 
 ## Getting started
 
@@ -48,7 +49,7 @@ tutor's README shows how.
 
 ## Adding a tutor
 
-- Name the folder `<Author>-<Language>-Tutor`, after the textbook's author.
+- Name the folder `<Author>-<Subject>-Tutor`, after the textbook's author.
 - Keep everything the tutor needs inside its folder, and every path in its instructions relative
   to that folder.
 - Keep all learner data in `learner/`. Have the bootstrap create it, including anything built
