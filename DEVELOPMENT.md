@@ -47,9 +47,18 @@ for the layout and the rules for adding a tutor.
 
 ## Lyons-DSP-Tutor
 
-- There is no tutor code yet. Section reviews live in the **Box** / **Next review** columns of
-  `learner/progress.md` (format in `CLAUDE.md` §4.2), not in a database. If that table turns out to
-  drift, a small standard-library script (like `vocab.py`) is the fix.
+- Section reviews live in the **Box** / **Next review** columns of `learner/progress.md` (format
+  in `CLAUDE.md` §4.2), not in a database. If that table turns out to drift, a small
+  standard-library script (like `vocab.py`) is the fix.
+- `jupyter/wait_answer.py` waits for the learner to submit an answer in the live notebook; the
+  tutor runs it in the background. It reads the shared document through `jupyter-nbmodel-client`
+  and notices a lost connection through a private field of that client, so check it when
+  upgrading the pinned packages.
+- Run the tests from the tutor's folder: `.venv/bin/python -m unittest discover -s tests`.
+  `test_detection.py` tests the submission logic with plain data (system `python3` works too).
+  `test_watcher.py` starts its own JupyterLab in a temporary folder, on a free port, with its own
+  token, and is skipped without the venv packages. The tests never touch the learner's JupyterLab,
+  `learner/` or `.jupyter-token`. Keep it that way, and add tests with any change to `wait_answer.py`.
 - Labs and the tutor's numeric checks need numpy, scipy and matplotlib, usually in the tutor's
   `.venv/` (gitignored). `.claude/settings.json` allows `pdftotext` and running scripts in
   `learner/lab/`.

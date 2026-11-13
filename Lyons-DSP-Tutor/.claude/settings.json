@@ -4,6 +4,7 @@
       "Bash(pdftotext *)",
       "Bash(.venv/bin/python learner/lab/*)",
       "Bash(python3 learner/lab/*)",
+      "Bash(.venv/bin/python jupyter/wait_answer.py *)",
       "mcp__jupyter__list_files",
       "mcp__jupyter__list_kernels",
       "mcp__jupyter__list_notebooks",
