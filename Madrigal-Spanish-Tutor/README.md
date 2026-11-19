@@ -37,6 +37,41 @@ Then type `hola`.
 You can say these at any time: **review**, **quiz me**, **explain X**, **stats**,
 **show my vocab**, **end session**.
 
+## Notebook page (`notebook.py`)
+
+Next to the terminal, the tutor keeps a notebook: a local web page that holds what you write and
+what you'll want to reread. The conversation stays in the terminal.
+
+- **Batches of questions** (vocabulary review, translation exercises, quizzes): each question has
+  its own numbered field. Enter moves to the next one; Enter on the last one sends the batch.
+- **Corrections and rewrites:** the tutor marks each answer ✓ or ✗ with the correct form and a
+  short reason. A wrong answer gets a field to write it again, with one more try if the rewrite
+  is still wrong.
+- **Notes:** the new words, a conjugation table, a rule in a line or two.
+- **Score:** each batch shows how many you got right on the first try and after rewriting. At the
+  end of the session the page shows the session score, and the tutor copies it into the session log.
+
+The page heading shows the current lesson and topic, and the whole session stays on the page.
+Everything is also saved to `learner/notebook/YYYY-MM-DD.md`, so you can reread it later.
+
+The tutor starts the server at the start of each session (`./notebook.py start`) and gives you the
+link, `http://127.0.0.1:8765/?t=…`. The server listens on 127.0.0.1 only. The token in the link
+is kept in `.notebook-token` (gitignored) and stays the same between sessions, so you can bookmark
+it. If the page can't start, the tutor carries on in the terminal. To stop using the page, tell
+the tutor; it notes that in your profile.
+
+```sh
+./notebook.py start --title "Lección 8 · El pretérito"   # start or reuse the server, print the link
+./notebook.py note --title "Words" "**anoche**: last night"
+./notebook.py ask --title "Into Spanish" "the train" "I took"   # post a batch, wait for the answers
+./notebook.py feedback ok "tomé | stress on the é"      # mark them; wrong ones get a rewrite field
+./notebook.py end                                       # session score
+./notebook.py stop
+./notebook.py --help                                    # all commands and exit codes
+```
+
+To use another port, set `NOTEBOOK_PORT` (e.g. in `.claude/settings.local.json` under `env`).
+
 ## Files
 
 | File | What it is | Who writes it |
@@ -50,7 +85,9 @@ You can say these at any time: **review**, **quiz me**, **explain X**, **stats**
 | `learner/log/YYYY-MM-DD.md` | What happened in each session and where to resume | tutor |
 | `learner/textbook-mapping.md` | Lesson → PDF page ranges and topics | tutor, at first launch |
 | `vocab.py` | Command-line tool for the vocabulary database | you |
-| `tests/` | Tests for `vocab.py` | you |
+| `learner/notebook/YYYY-MM-DD.md` | Everything that was on the notebook page, per session | `notebook.py` |
+| `notebook.py` | The notebook page: a local web page beside the terminal | you |
+| `tests/` | Tests for `vocab.py` and `notebook.py` | you |
 
 The learner files are personal data. They live in `learner/`, which this repo ignores, so they
 never end up in a commit of Aurora Polaris. To start over with a new learner, delete
@@ -93,7 +130,7 @@ Spaced repetition uses Leitner boxes with intervals of 1, 3, 7, 14 and 30 days. 
 moves a word up one box; right in box 5 means mastered. A wrong answer sends it back to box 1.
 The intervals are stored in the `intervals` table of `learner/vocab.db`, so they can be changed there.
 
-`.claude/settings.json` lets the tutor run `./vocab.py` without a permission prompt.
+`.claude/settings.json` lets the tutor run `./vocab.py` and `./notebook.py` without a permission prompt.
 
 ## Tests
 
@@ -102,7 +139,9 @@ python3 -m unittest discover -s tests -v
 ```
 
 The tests run `vocab.py` against temporary databases with a fixed date. They never touch the
-real `learner/vocab.db`.
+real `learner/vocab.db`. The `notebook.py` tests start their own server on a free port, with a
+temporary token and notebook folder, so they don't touch a running notebook, `.notebook-token` or
+`learner/notebook/`.
 
 ## License
 

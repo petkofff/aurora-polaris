@@ -6,3 +6,4 @@ learner/
 .jupyter/
 .jupyter_ystore.db
 .ipynb_checkpoints/
+.notebook-token

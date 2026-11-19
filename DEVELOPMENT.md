@@ -35,13 +35,22 @@ for the layout and the rules for adding a tutor.
 
 ## Madrigal-Spanish-Tutor
 
-- `vocab.py` is the only code: Python 3.10+, standard library only. The tutor uses it through its
-  CLI, so keep its output stable and readable.
+- The code is `vocab.py` and `notebook.py`: Python 3.10+, standard library only. The tutor uses
+  them through their CLIs, so keep their output and exit codes stable and readable.
+- `notebook.py` serves the notebook page (HTML and JavaScript inside the script, no external files)
+  on 127.0.0.1 and checks the token and the `Host` header on every request. It keeps the session in
+  memory and rewrites the session's section of `learner/notebook/YYYY-MM-DD.md` on every change.
+  The tutor runs `ask` / `wait` in the background, like `wait_answer.py` in the DSP tutor. The
+  page's Markdown renderer builds DOM nodes and never uses `innerHTML`; keep it that way.
 - Run the tests from the tutor's folder:
   `cd Madrigal-Spanish-Tutor && python3 -m unittest discover -s tests`.
   They run `vocab.py` as a subprocess against temporary databases (`VOCAB_DB`, `VOCAB_TODAY`)
-  and fail if the real `learner/vocab.db` changes. Keep it that way, and add tests with any
-  change to `vocab.py`.
+  and fail if the real `learner/vocab.db` changes. `test_notebook.py` starts its own server on a free
+  port, with a temporary token and notebook folder (`NOTEBOOK_PORT`, `NOTEBOOK_TOKEN_FILE`,
+  `NOTEBOOK_DIR`, `NOTEBOOK_TODAY`), and fails if the real `.notebook-token` or
+  `learner/notebook/` changes. Keep it that way, and add tests with any change to `vocab.py` or
+  `notebook.py`. The tests don't cover the
+  page's JavaScript; check changes to it in a browser.
 - To read the textbook, extract a few pages at a time with
   `pdftotext -layout -f <first> -l <last> "<pdf>" -`, never the whole PDF.
 

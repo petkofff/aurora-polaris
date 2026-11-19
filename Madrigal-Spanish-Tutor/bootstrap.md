@@ -74,7 +74,9 @@ Get today's date with `date +%F`. Then create:
 - `learner/vocab.db` — run `./vocab.py init` (see `CLAUDE.md` §4.2); add any words from the placement check with `./vocab.py add`.
 - `learner/log/` directory and `learner/log/YYYY-MM-DD.md` for this bootstrap session (format: `CLAUDE.md` §4.3).
 
-Then ask whether they want to start the first lesson now. If yes, continue with `CLAUDE.md` §2 Step 2.
+Then ask whether they want to start the first lesson now. If yes, open the notebook
+(`CLAUDE.md` §5.1), give them the link with one line on what it's for, and continue with
+`CLAUDE.md` §2 Step 2.
 
 ## 4. Templates
 

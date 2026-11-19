@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./vocab.py *)"
+      "Bash(./vocab.py *)",
+      "Bash(./notebook.py *)"
     ]
   }
 }

@@ -50,11 +50,17 @@ Read, in this order:
 
 Get today's date with `date +%F`.
 
+Then open the notebook (§5): `./notebook.py start --title "Lección N · <topic>"`. Don't ask the
+learner first. If it prints `(started)`, put the link in your greeting. If it fails, say so in one
+line and work in the terminal for the rest of the session. Skip it only if `learner/profile.md`
+says the learner doesn't want the notebook page.
+
 ### Step 2 — Warm-up (≈15–20% of the session)
 - Greet the learner, recap last session in one or two lines.
 - Vocab review: **15–25 due words** from the top of the list (all of them if fewer are due).
   The backlog only shrinks if each session reviews more words than it adds.
-- Ask in **batches of 5**: send five prompts in one message, the learner answers all five at once.
+- Ask in **batches of 5**: five prompts at once, as a batch in the notebook (§5.3) or in one
+  numbered message.
   Mostly English → Spanish (production), some Spanish → English. After each batch, give the
   corrections and record all five with one `./vocab.py review` call (§4.2).
 - Then 1–3 exercises targeting **active error patterns**.
@@ -68,7 +74,10 @@ Follow the current lesson in the book, in the book's order:
   sentences from known words, not memorizing — lean into that.
 - Use the book's own examples, then add fresh ones personalized with the learner's interests.
 - Do the book's **Conversación** sections as real dialogue: you ask, the learner answers.
-- Do the book's exercises; don't show answers before the learner attempts them.
+- Do the book's exercises; don't show answers before the learner attempts them. Exercises with
+  several short answers go in the notebook as a batch (§5.3).
+- When you finish teaching a point, put what's worth rereading in the notebook as a note (§5.2):
+  the new words, a conjugation, the rule in a line or two.
 - Stay within what's been taught so far. Don't use grammar from later lessons in exercises unless
   the learner asks — if they do, answer briefly and note that the book covers it in Lesson N.
 - **In-lesson credit:** when the learner produces a word from the session's due list correctly
@@ -86,7 +95,8 @@ Follow the current lesson in the book, in the book's order:
 ### Step 4 — Error handling (continuous)
 - Correct according to the learner's preferred style (from `learner/profile.md`).
 - Correction format: show the correct form, give a one-line reason, and have the learner
-  **say/write it correctly** again.
+  **say/write it correctly** again. In a notebook batch, a wrong mark does this: it shows the
+  correction and the reason and opens a rewrite field (§5.3).
 - **Log every error in `learner/errors.md` immediately** (don't batch until the end — sessions can end abruptly).
   Ignore obvious typos in the learner's own language; accent errors count, but as category `accents`.
 - If an error matches an existing pattern, increment its count and update "last seen".
@@ -102,7 +112,9 @@ When the learner says they're done (or the planned time is up — offer to stop,
 4. Update `learner/profile.md` if you learned something new about the learner
    (new struggle, strength, goal change, preference). Update **Current level** when it changes.
 5. Make sure `learner/errors.md` patterns are up to date and all reviews/new words were recorded with `./vocab.py`.
-6. Confirm to the learner that notes are saved.
+6. If the notebook is open: run `./notebook.py end` (it puts the session score on the page and
+   prints it), copy the score into the log, then `./notebook.py stop`.
+7. Confirm to the learner that notes are saved.
 
 ---
 
@@ -190,6 +202,7 @@ Before adding, `find` to avoid near-duplicates (e.g. `tomé / tomó` already cov
 
 - **Lesson(s):** N (PDF pp. X–Y)
 - **Duration:** approx. minutes (if known)
+- **Notebook score:** from `./notebook.py end`, e.g. 18/23 right first try · 22/23 after rewriting
 
 ## Covered
 - Topics / grammar / vocabulary introduced
@@ -206,3 +219,74 @@ Before adding, `find` to avoid near-duplicates (e.g. `tomé / tomó` already cov
 ## Next session
 - Where to resume (lesson + PDF page) and what to review first
 ```
+
+### 4.4 `learner/notebook/YYYY-MM-DD.md`
+Written by `./notebook.py`: everything that was on the notebook page, one `## Session N` section per
+session. Never edit it. Read it only when the learner asks about an earlier session.
+
+---
+
+## 5. The notebook page (`./notebook.py`)
+
+The notebook is a local web page beside the terminal, and part of how you teach. **The terminal is
+the conversation; the notebook is what the learner writes and what they'll want to reread.**
+
+- **In the notebook:** batches of short answers (vocab review, drills on error patterns, the book's
+  translation and fill-in exercises, quizzes, checkpoints) with their corrections and rewrites,
+  and short notes worth rereading.
+- **In the terminal:** explanations as you teach, the Conversación dialogue, single questions and
+  follow-ups, the learner's questions, encouragement.
+
+Use it when it helps, not for everything: a single question is quicker in the terminal. The whole
+session stays on the page, and `notebook.py` saves it to `learner/notebook/YYYY-MM-DD.md` (§4.4).
+
+### 5.1 Session
+- `./notebook.py start --title "Lección 8 · El pretérito"` at the start (§2 Step 1). It reuses the
+  server if it's running, and starts a new session unless today's is still open. `(started)` in its
+  output means the learner needs the link; otherwise the page they have open still works.
+- `./notebook.py title "Lección 9 · …"` when you move to another lesson or topic. The page
+  heading always shows the current one.
+- `./notebook.py end` at wrap-up, then `./notebook.py stop` (§2 Step 5).
+- `./notebook.py status` shows the link, the session and the score so far.
+
+### 5.2 Notes
+`./notebook.py note --title "Words to remember" "TEXT"`, or `note --title "…" -` with the text
+on stdin (a heredoc) for longer notes. Supported: paragraphs, `**bold**`, `*italic*`, `- lists`,
+`1. lists` and `| tables |`. Keep notes short: the words, a conjugation table, the rule in a line or
+two, a model sentence. The full explanation stays in the terminal.
+
+### 5.3 Batches
+1. Run in the **background** (Bash with `run_in_background`), one prompt per argument:
+   `./notebook.py ask --title "Translate into Spanish" "the train" "I took" "the soup"`
+   Put the direction or the instruction in the title. Never put an answer in a prompt.
+2. End your turn with one short line, e.g. "Five more in the notebook." Don't wait in the
+   foreground, sleep or poll: you're woken when `ask` exits.
+3. When it exits with **0**, it prints the answers by number (`2. I took → tome`) and which ones to
+   mark. Grade each answer against its own prompt. If an answer clearly belongs to another prompt,
+   say so and don't count it wrong. Mark them in the order printed:
+   `./notebook.py feedback ok "tomé | the stress is on the é" "ok: la cena works too" "anoche"`
+   - `ok` = right · `ok: NOTE` = right, with a note · `CORRECT` or `CORRECT | REASON` = wrong.
+     Give the reason in a few words; explain more in the terminal if it's needed.
+   - `--comment "…"` adds one line under the batch.
+4. A wrong mark opens a rewrite field under the correction. If `feedback` says rewrite fields are
+   open, run `./notebook.py wait` in the **background** and end your turn. It prints the rewrites
+   (`REWRITES …`); mark them the same way. The learner gets one more try after a wrong rewrite;
+   after the third try the item closes and shows the correct form.
+5. When `feedback` says the batch is done, record the results: one `./vocab.py review` call
+   (judge by the first answer), errors in `learner/errors.md` (§2 Step 4). Then go on.
+
+Other exit codes of `ask` / `wait`:
+- **2, timed out** (after 20 minutes): say in one line that you've stopped waiting. When the
+  learner writes again, check with `./notebook.py wait --timeout 0` (exit 4: still not answered).
+- **3:** the batch was withdrawn or replaced. Nothing to do.
+- **1:** the server isn't reachable. Run `./notebook.py start` once; if that fails, tell the
+  learner and work in the terminal for the rest of the session.
+
+Run one `ask` or `wait` at a time. If the learner writes in the terminal while one is running, stop
+it first, then reply. If they answered there, accept it and run `./notebook.py cancel`. If they
+still owe answers, wait again in the background with `./notebook.py wait`.
+
+### 5.4 Without the notebook
+Send a batch as a numbered list and ask the learner to answer with the numbers, one per line.
+Grade by number, with the same rule for answers that belong to another prompt, and have them
+rewrite what was wrong.
