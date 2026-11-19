@@ -105,7 +105,7 @@ class NotebookCase(unittest.TestCase):
         return r.stdout + r.stderr
 
     def background(self, *args):
-        """Run a waiting command (`ask`, `wait`) in the background."""
+        """Run a waiting command (`ask --wait`, `wait`, `watch`) in the background."""
         proc = subprocess.Popen([sys.executable, str(SCRIPT), *args], env=self.env,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
@@ -117,15 +117,30 @@ class NotebookCase(unittest.TestCase):
         return proc
 
     def start_ask(self, *args):
-        """Run `ask` in the background; return the process once its batch is open on the page."""
+        """Run `ask --wait` in the background; return the process once its batch is open on the page."""
         before = self.state()["version"]
-        proc = self.background("ask", *args)
+        proc = self.background("ask", "--wait", *args)
         for _ in range(100):
             st = self.state()
             if st["version"] != before and self.latest(st) and self.latest(st)["status"] == "open":
                 return proc
             time.sleep(0.05)
         raise AssertionError("ask didn't put a batch on the page")
+
+    def read_event(self, proc, timeout=15):
+        """The lines a running `watch` prints for one submission (up to its "Mark …" line)."""
+        timer = threading.Timer(timeout, proc.kill)
+        timer.start()
+        lines = []
+        try:
+            while not lines or not lines[-1].startswith("Mark "):
+                line = proc.stdout.readline()
+                if not line:
+                    raise AssertionError(f"watch ended without an event: {lines}")
+                lines.append(line)
+        finally:
+            timer.cancel()
+        return "".join(lines)
 
     def finish(self, proc, code=0):
         out, err = proc.communicate(timeout=30)
@@ -193,6 +208,7 @@ class TestAccess(NotebookCase):
         self.assertEqual(self.http("POST", "/api/note", {"text": "  "})[0], 400)
         self.assertEqual(self.http("POST", "/api/session", {"day": "yesterday"})[0], 400)
         self.assertEqual(self.http("GET", "/api/state?since=abc")[0], 400)
+        self.assertEqual(self.http("POST", "/api/printed", {"id": "1"})[0], 400)
         self.assertEqual(self.http("GET", "/nothing")[0], 404)
 
 
@@ -235,7 +251,7 @@ class TestAnswers(NotebookCase):
         self.assertEqual(self.submit(["uno", "dos"], rows=[0, 1]), 409)             # already sent
 
     def test_ask_times_out(self):
-        r = self.run_nb("ask", "--timeout", "1", "the train")
+        r = self.run_nb("ask", "--wait", "--timeout", "1", "the train")
         self.assertEqual(r.returncode, 2)
         self.assertIn("still open", r.stdout)
         self.assertEqual(self.latest()["status"], "open")
@@ -332,6 +348,66 @@ class TestRewrites(NotebookCase):
         self.assertIn("already marked", self.fails("feedback", "ok"))
 
 
+class TestWatch(NotebookCase):
+    def test_ask_returns_at_once(self):
+        out = self.ok("ask", "--title", "Into Spanish", "the train")
+        self.assertIn("is on the page (1 prompts).", out)
+        self.assertNotIn("Waiting", out)
+        self.assertEqual(self.latest()["status"], "open")
+
+    def test_watch_prints_each_submission_once(self):
+        watcher = self.background("watch")
+        self.ok("ask", "--title", "Into Spanish", "the train", "I took")
+        batch_id = self.latest()["id"]
+        self.submit(["el tren", "tome"])
+        self.assertEqual(self.read_event(watcher),
+                         f"ANSWERS (batch {batch_id}: Into Spanish)\n1. the train → el tren\n2. I took → tome\n"
+                         "Mark all 1, 2 in this order with ./notebook.py feedback.\n")
+        self.ok("feedback", "ok", "tomé | accent")
+        self.submit(["tomé"])
+        out = self.read_event(watcher)
+        self.assertIn("REWRITES", out)
+        self.assertIn("2. I took → tomé   (try 2 of 3; before: tome; correct: tomé)", out)
+        # A second watcher (e.g. after the first one expired) doesn't repeat what was printed.
+        self.assertEqual(self.finish(self.background("watch", "--timeout", "1"), 2), "")
+
+    def test_a_killed_watcher_loses_nothing(self):
+        watcher = self.background("watch")
+        time.sleep(0.5)                            # its request is now waiting on the server
+        watcher.kill()
+        watcher.communicate()
+        self.ok("ask", "the train")
+        self.submit(["el tren"])
+        out = self.finish(self.background("watch", "--timeout", "1"), 2)
+        self.assertIn("1. the train → el tren", out)
+
+    def test_watch_reports_what_was_sent_while_nobody_watched(self):
+        self.ok("ask", "the train")
+        self.submit(["el tren"])
+        out = self.finish(self.background("watch", "--timeout", "1"), 2)
+        self.assertIn("1. the train → el tren", out)
+
+    def test_wait_counts_as_printed(self):
+        self.ok("ask", "the train")
+        self.submit(["el tren"])
+        self.assertIn("el tren", self.ok("wait", "--timeout", "0"))
+        self.assertEqual(self.finish(self.background("watch", "--timeout", "1"), 2), "")
+        self.assertIn("el tren", self.ok("wait", "--timeout", "0"))    # wait always shows the answers
+
+    def test_feedback_can_wait_for_the_rewrites(self):
+        self.ok("ask", "I took")
+        self.submit(["tome"])
+        proc = self.background("feedback", "--wait", "tomé")
+        for _ in range(100):
+            if self.latest()["status"] == "open":
+                break
+            time.sleep(0.05)
+        self.submit(["tomé"])
+        out = self.finish(proc)
+        self.assertIn("Rewrite fields are open for 1.", out)
+        self.assertIn("REWRITES", out)
+
+
 class TestSession(NotebookCase):
     def test_notes_titles_score_and_file(self):
         self.ok("title", "Lección 8 · El pretérito")
@@ -378,6 +454,9 @@ class TestStartStop(NotebookCase):
         self.assertIn("Not running", self.fails("status"))
         for args in (["ask", "x"], ["wait"], ["feedback", "ok"], ["note", "x"], ["end"], ["cancel"]):
             self.assertIn("isn't running", self.fails(*args))
+        r = self.run_nb("watch")
+        self.assertEqual(r.returncode, 1)
+        self.assertTrue(r.stdout.startswith("NOTEBOOK DOWN"), r.stdout)    # on stdout: it's the event
         self.assertIn("Not running", self.ok("stop"))
 
     def test_start_reuses_the_session_until_it_ends(self):
@@ -402,6 +481,22 @@ class TestStartStop(NotebookCase):
         self.assertLess(text.index("## Session 2"), text.index("Adiós"))
         self.assertIn("Stopped", self.ok("stop"))
         self.fails("status")
+
+    def test_watch_exits_quietly_when_stopped_and_reports_a_lost_server(self):
+        self.start_server()
+        self.addCleanup(self.stop_server)
+        watcher = self.background("watch")
+        time.sleep(0.5)
+        self.ok("stop")
+        self.assertEqual(self.finish(watcher, 0), "")
+        self.server.wait(10)
+        self.server = None
+
+        self.start_server()
+        watcher = self.background("watch")
+        time.sleep(0.5)
+        self.stop_server()                         # killed, not stopped
+        self.assertIn("NOTEBOOK DOWN", self.finish(watcher, 1))
 
     def test_a_new_day_starts_a_new_session(self):
         self.addCleanup(self.run_nb, "stop")

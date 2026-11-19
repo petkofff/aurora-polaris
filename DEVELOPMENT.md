@@ -40,8 +40,12 @@ for the layout and the rules for adding a tutor.
 - `notebook.py` serves the notebook page (HTML and JavaScript inside the script, no external files)
   on 127.0.0.1 and checks the token and the `Host` header on every request. It keeps the session in
   memory and rewrites the session's section of `learner/notebook/YYYY-MM-DD.md` on every change.
-  The tutor runs `ask` / `wait` in the background, like `wait_answer.py` in the DSP tutor. The
-  page's Markdown renderer builds DOM nodes and never uses `innerHTML`; keep it that way.
+  The tutor keeps `watch` running under the Monitor tool: its stdout is the event stream, so it
+  prints only the learner's submissions (and `NOTEBOOK DOWN`), and each one wakes the tutor with
+  the answers in the notification. A submission counts as printed only when the client confirms it
+  (`/api/printed`), so a killed watcher loses nothing; keep it that way. `ask --wait` /
+  `feedback --wait` / `wait` are the fallback for agents without Monitor. The page's Markdown
+  renderer builds DOM nodes and never uses `innerHTML`; keep it that way.
 - Run the tests from the tutor's folder:
   `cd Madrigal-Spanish-Tutor && python3 -m unittest discover -s tests`.
   They run `vocab.py` as a subprocess against temporary databases (`VOCAB_DB`, `VOCAB_TODAY`)

@@ -10,21 +10,26 @@ Commands:
   status                      link, session and score (exit 1 if the server isn't running)
   title TEXT                  set the heading (lesson and topic); a change starts a new section
   note [--title T] TEXT       post a note (Markdown: **bold**, *italic*, lists, tables); TEXT - reads stdin
-  ask [--title T] [--timeout S] PROMPT...
-                              post a batch and wait for the answers (default timeout 1200 s)
+  ask [--title T] [--wait [--timeout S]] PROMPT...
+                              post a batch; with --wait, also wait for the answers (default 1200 s)
+  watch [--timeout S]         print the answers and rewrites as the learner sends them, each once,
+                              until the server stops (default 1800 s; 0 = no limit). Prints nothing
+                              else on stdout except a NOTEBOOK DOWN line if the server goes away.
+                              Meant for a background watcher whose output wakes the tutor.
   wait [--timeout S]          wait for the answers or rewrites of the latest batch (0 = check once)
-  feedback [--comment C] MARK...
-                              mark the answers that `ask` / `wait` printed, in order:
+  feedback [--comment C] [--wait [--timeout S]] MARK...
+                              mark the answers that `watch` / `wait` printed, in order:
                               ok · 'ok: NOTE' · CORRECT · 'CORRECT | REASON' (the last two are wrong).
                               A wrong answer opens a rewrite field; after 3 tries the item closes.
+                              With --wait, then wait for the rewrites like `wait`.
   cancel                      withdraw the latest batch (e.g. answered in the terminal)
   end                         put the session score on the page and print it
   stop                        stop the server
   serve [--port P] [--title T]
                               run the server in the foreground (`start` runs this)
 
-Exit codes: 0 ok · 1 error (e.g. server not running) · 2 timed out · 3 batch withdrawn or replaced
-            · 4 (wait --timeout 0) not answered yet.
+Exit codes: 0 ok (watch: the server was stopped) · 1 error (e.g. server not running) · 2 timed out
+            · 3 batch withdrawn or replaced · 4 (wait --timeout 0) not answered yet.
 
 The server listens on 127.0.0.1 only. Every request needs the token from .notebook-token (created on
 first start, next to this script); the page gets it from its link.
@@ -246,6 +251,8 @@ class Notebook:
         self.cond = threading.Condition()
         self.version = 0
         self.session = Session(title, today())
+        self.delivered = None      # (batch id, submission) that `watch` or `wait` confirmed printing
+        self.stopping = False
 
     def _changed(self):
         self.version += 1
@@ -260,6 +267,35 @@ class Notebook:
             self.cond.wait_for(lambda: self.version != since, timeout)
             return self.state()
 
+    def _pending(self):
+        """The latest batch if the learner sent something that wasn't printed yet."""
+        batch = self.session.latest_batch()
+        if batch and batch_status(batch) == "answered" and (batch["id"], batch["sent"]) != self.delivered:
+            return batch
+        return None
+
+    def watch(self, timeout):
+        """The next submission nobody printed yet; or `stopped` / `waiting`.
+
+        It counts as printed only when the client confirms (`printed`): a killed watcher's request
+        may still be waiting here, and what it takes must not be lost."""
+        with self.cond:
+            self.cond.wait_for(lambda: self.stopping or self._pending(), timeout)
+            batch = self._pending()
+            if batch:
+                return {"status": "answered", "batch": self.batch_view(batch)}
+            return {"status": "stopped" if self.stopping else "waiting"}
+
+    def printed(self, batch_id, sent):
+        with self.cond:
+            self.delivered = (batch_id, sent)
+            return {"ok": True}, None
+
+    def stop(self):
+        with self.cond:
+            self.stopping = True
+            self.cond.notify_all()
+
     def batch_view(self, batch):
         view = copy.deepcopy(batch)
         view["status"] = batch_status(batch)
@@ -270,6 +306,7 @@ class Notebook:
     def new_session(self, title, day):
         with self.cond:
             self.session = Session(title, day)
+            self.delivered = None
             self._changed()
             return {"session": self.session.number}, None
 
@@ -296,7 +333,7 @@ class Notebook:
         with self.cond:
             self._withdraw_latest()
             item = self.session.add({
-                "kind": "batch", "title": title, "comment": "", "cancelled": False,
+                "kind": "batch", "title": title, "comment": "", "cancelled": False, "sent": 0,
                 "rows": [{"prompt": p, "attempts": [{"text": None, "mark": None}]} for p in prompts]})
             self._changed()
             return {"id": item["id"]}, None
@@ -311,6 +348,7 @@ class Notebook:
                 return None, "the page is out of date; reload it"
             for i, text in zip(rows, answers):
                 batch["rows"][i]["attempts"][-1]["text"] = text
+            batch["sent"] += 1
             self._changed()
             return {"ok": True}, None
 
@@ -451,6 +489,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, nb.wait_change(since, timeout))
         if url.path == "/api/wait":
             return self.send(200, nb.wait_answer(batch_id, timeout))
+        if url.path == "/api/watch":
+            return self.send(200, nb.watch(timeout))
         self.fail(404, "not found")
 
     def do_POST(self):
@@ -510,13 +550,22 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 return self.fail(400, "day must be YYYY-MM-DD")
             return self.reply(nb.new_session(title, day))
+        if url.path == "/api/printed":
+            if not (isinstance(body.get("id"), int) and isinstance(body.get("sent"), int)):
+                return self.fail(400, "need id and sent")
+            return self.reply(nb.printed(body["id"], body["sent"]))
         if url.path == "/api/cancel":
             return self.reply(nb.cancel())
         if url.path == "/api/end":
             return self.reply(nb.end())
         if url.path == "/api/stop":
+            nb.stop()               # watchers get `stopped` and exit quietly
             self.send(200, {"ok": True})
-            threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+            def shut_down():
+                time.sleep(0.3)     # let the watchers' replies go out first
+                self.server.shutdown()
+            threading.Thread(target=shut_down, daemon=True).start()
             return
         self.fail(404, "not found")
 
@@ -593,6 +642,16 @@ def print_answers(batch):
     print(f"Mark {which} {', '.join(str(n) for n, _ in rows)} in this order with ./notebook.py feedback.")
 
 
+def show_answers(batch):
+    """Print the answers to mark and tell the server they were printed."""
+    print_answers(batch)
+    sys.stdout.flush()
+    try:
+        api("POST", "/api/printed", {"id": batch["id"], "sent": batch["sent"]})
+    except NotRunning:
+        pass
+
+
 def wait_for(batch_id, timeout):
     deadline = time.monotonic() + timeout
     while True:
@@ -601,7 +660,7 @@ def wait_for(batch_id, timeout):
         data = call("GET", f"/api/wait?id={batch_id}&timeout={slice_:.1f}", timeout=slice_ + 10)
         status = data["status"]
         if status == "answered":
-            print_answers(data["batch"])
+            show_answers(data["batch"])
             return 0
         if status == "done":
             print(f"Batch {batch_id} is already marked; nothing to wait for.")
@@ -712,8 +771,41 @@ def cmd_ask(args):
     if not all(prompts) or len(prompts) > MAX_PROMPTS:
         sys.exit(f"error: need 1–{MAX_PROMPTS} non-empty prompts")
     batch_id = call("POST", "/api/ask", {"title": args.title, "prompts": prompts})["id"]
+    if not args.wait:
+        print(f"Batch {batch_id} is on the page ({len(prompts)} prompts).")
+        return 0
     print(f"Batch {batch_id} is on the page ({len(prompts)} prompts). Waiting for the answers…", flush=True)
     return wait_for(batch_id, args.timeout)
+
+
+def cmd_watch(args):
+    # stdout is the event stream: only the learner's answers and a NOTEBOOK DOWN line go there.
+    deadline = time.monotonic() + args.timeout if args.timeout else None
+    misses = 0
+    while True:
+        slice_ = SLICE
+        if deadline is not None:
+            slice_ = min(SLICE, deadline - time.monotonic())
+            if slice_ <= 0:
+                return 2
+        try:
+            code, data = api("GET", f"/api/watch?timeout={slice_:.1f}", timeout=slice_ + 10)
+        except NotRunning:
+            misses += 1
+            if misses < 3:
+                time.sleep(1)
+                continue
+            print(f"NOTEBOOK DOWN: the server on port {PORT} isn't responding. "
+                  "Run ./notebook.py start, then watch again.", flush=True)
+            return 1
+        misses = 0
+        if code != 200:
+            print(f"NOTEBOOK DOWN: {data.get('error', f'HTTP {code}')}", flush=True)
+            return 1
+        if data["status"] == "answered":
+            show_answers(data["batch"])
+        elif data["status"] == "stopped":
+            return 0
 
 
 def cmd_wait(args):
@@ -742,7 +834,9 @@ def cmd_feedback(args):
     reopened = [n for n, r in enumerate(batch["rows"], 1) if row_state(r) == "input"]
     if reopened:
         print(f"Marked {right}/{len(marks)} right. Rewrite fields are open for "
-              f"{', '.join(map(str, reopened))}: wait for them in the background with ./notebook.py wait")
+              f"{', '.join(map(str, reopened))}.", flush=True)
+        if args.wait:
+            return wait_for(batch["id"], args.timeout)
     else:
         first, final, total = batch["score"]
         print(f"Marked {right}/{len(marks)} right. Batch {batch['id']} is done: {score_text(first, final, total)}.")
@@ -805,16 +899,22 @@ def main(argv=None):
     s.add_argument("text")
     s.set_defaults(func=cmd_note)
 
-    s = sub.add_parser("ask", help="post a batch and wait for the answers")
+    s = sub.add_parser("ask", help="post a batch (with --wait, wait for the answers)")
     s.add_argument("--title", default="")
+    s.add_argument("--wait", action="store_true")
     s.add_argument("--timeout", type=float, default=1200)
     s.add_argument("prompts", nargs="+")
     s.set_defaults(func=cmd_ask)
+    s = sub.add_parser("watch", help="print the answers and rewrites as they're sent")
+    s.add_argument("--timeout", type=float, default=1800)
+    s.set_defaults(func=cmd_watch)
     s = sub.add_parser("wait", help="wait for the answers or rewrites of the latest batch")
     s.add_argument("--timeout", type=float, default=1200)
     s.set_defaults(func=cmd_wait)
-    s = sub.add_parser("feedback", help="mark the answers")
+    s = sub.add_parser("feedback", help="mark the answers (with --wait, wait for the rewrites)")
     s.add_argument("--comment", default="")
+    s.add_argument("--wait", action="store_true")
+    s.add_argument("--timeout", type=float, default=1200)
     s.add_argument("marks", nargs="+")
     s.set_defaults(func=cmd_feedback)
 

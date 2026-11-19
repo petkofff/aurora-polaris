@@ -52,8 +52,8 @@ Get today's date with `date +%F`.
 
 Then open the notebook (§5): `./notebook.py start --title "Lección N · <topic>"`. Don't ask the
 learner first. If it prints `(started)`, put the link in your greeting. If it fails, say so in one
-line and work in the terminal for the rest of the session. Skip it only if `learner/profile.md`
-says the learner doesn't want the notebook page.
+line and work in the terminal for the rest of the session. Then start the watcher (§5.3). Skip
+the notebook only if `learner/profile.md` says the learner doesn't want it.
 
 ### Step 2 — Warm-up (≈15–20% of the session)
 - Greet the learner, recap last session in one or two lines.
@@ -113,7 +113,7 @@ When the learner says they're done (or the planned time is up — offer to stop,
    (new struggle, strength, goal change, preference). Update **Current level** when it changes.
 5. Make sure `learner/errors.md` patterns are up to date and all reviews/new words were recorded with `./vocab.py`.
 6. If the notebook is open: run `./notebook.py end` (it puts the session score on the page and
-   prints it), copy the score into the log, then `./notebook.py stop`.
+   prints it), copy the score into the log, then `./notebook.py stop`. The watcher then exits.
 7. Confirm to the learner that notes are saved.
 
 ---
@@ -256,35 +256,49 @@ on stdin (a heredoc) for longer notes. Supported: paragraphs, `**bold**`, `*ital
 two, a model sentence. The full explanation stays in the terminal.
 
 ### 5.3 Batches
-1. Run in the **background** (Bash with `run_in_background`), one prompt per argument:
+**The watcher.** Right after `start`, run `./notebook.py watch` with the **Monitor** tool (load it
+with ToolSearch if it isn't loaded): `timeout_ms` 1800000, description "answers in the notebook".
+Keep one running all session. Each time the learner sends answers or rewrites, it prints them and
+you're woken with them in the notification. It never prints anything twice and loses nothing, so:
+- When it expires, start it again.
+- If it prints `NOTEBOOK DOWN`, run `./notebook.py start` once and start it again. If that fails,
+  tell the learner and work in the terminal for the rest of the session.
+- If Monitor isn't available or won't start, use the fallback below.
+
+1. Post a batch, one prompt per argument. It returns at once:
    `./notebook.py ask --title "Translate into Spanish" "the train" "I took" "the soup"`
    Put the direction or the instruction in the title. Never put an answer in a prompt.
-2. End your turn with one short line, e.g. "Five more in the notebook." Don't wait in the
-   foreground, sleep or poll: you're woken when `ask` exits.
-3. When it exits with **0**, it prints the answers by number (`2. I took → tome`) and which ones to
-   mark. Grade each answer against its own prompt. If an answer clearly belongs to another prompt,
-   say so and don't count it wrong. Mark them in the order printed:
+2. End your turn with one short line, e.g. "Five more in the notebook." Don't wait, sleep or poll.
+3. The watcher brings the answers by number (`2. I took → tome`) and which ones to mark. Grade
+   each answer against its own prompt. If an answer clearly belongs to another prompt, say so and
+   don't count it wrong. Mark them in the order printed:
    `./notebook.py feedback ok "tomé | the stress is on the é" "ok: la cena works too" "anoche"`
    - `ok` = right · `ok: NOTE` = right, with a note · `CORRECT` or `CORRECT | REASON` = wrong.
      Give the reason in a few words; explain more in the terminal if it's needed.
    - `--comment "…"` adds one line under the batch.
-4. A wrong mark opens a rewrite field under the correction. If `feedback` says rewrite fields are
-   open, run `./notebook.py wait` in the **background** and end your turn. It prints the rewrites
-   (`REWRITES …`); mark them the same way. The learner gets one more try after a wrong rewrite;
-   after the third try the item closes and shows the correct form.
+4. A wrong mark opens a rewrite field under the correction. The rewrites come through the watcher
+   the same way (`REWRITES …`); mark them the same way. The learner gets one more try after a
+   wrong rewrite; after the third try the item closes and shows the correct form.
 5. When `feedback` says the batch is done, record the results: one `./vocab.py review` call
-   (judge by the first answer), errors in `learner/errors.md` (§2 Step 4). Then go on.
+   (judge by the first answer), errors in `learner/errors.md` (§2 Step 4). Then go on. To save
+   a step, chain the next batch: `./notebook.py feedback ok ok && ./notebook.py ask …`.
 
-Other exit codes of `ask` / `wait`:
-- **2, timed out** (after 20 minutes): say in one line that you've stopped waiting. When the
-  learner writes again, check with `./notebook.py wait --timeout 0` (exit 4: still not answered).
+If the learner writes in the terminal while a batch is open, just reply; the watcher keeps
+running. If they answered there, accept it and run `./notebook.py cancel`. If you think you
+missed answers, `./notebook.py wait --timeout 0` prints them (exit 4: not sent yet).
+
+**Fallback without the watcher.** Run `./notebook.py ask --wait …` in the **background** (Bash with
+`run_in_background`) and end your turn; you're woken when it exits. Read its output, then mark.
+If rewrites are needed, run `./notebook.py feedback --wait …` in the background instead: it marks,
+then waits for the rewrites. Exit codes of `--wait` and `wait`:
+- **0:** the answers are printed. **2:** timed out after 20 minutes; say in one line that you've
+  stopped waiting, and check with `./notebook.py wait --timeout 0` when the learner writes again.
 - **3:** the batch was withdrawn or replaced. Nothing to do.
 - **1:** the server isn't reachable. Run `./notebook.py start` once; if that fails, tell the
   learner and work in the terminal for the rest of the session.
 
-Run one `ask` or `wait` at a time. If the learner writes in the terminal while one is running, stop
-it first, then reply. If they answered there, accept it and run `./notebook.py cancel`. If they
-still owe answers, wait again in the background with `./notebook.py wait`.
+Run one waiting command at a time. If the learner writes in the terminal while one is running,
+stop it, reply, and wait again with `./notebook.py wait` in the background.
 
 ### 5.4 Without the notebook
 Send a batch as a numbered list and ask the learner to answer with the numbers, one per line.

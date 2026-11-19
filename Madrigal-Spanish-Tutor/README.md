@@ -63,12 +63,17 @@ the tutor; it notes that in your profile.
 ```sh
 ./notebook.py start --title "Lección 8 · El pretérito"   # start or reuse the server, print the link
 ./notebook.py note --title "Words" "**anoche**: last night"
-./notebook.py ask --title "Into Spanish" "the train" "I took"   # post a batch, wait for the answers
+./notebook.py watch                                     # print answers and rewrites as they're sent
+./notebook.py ask --title "Into Spanish" "the train" "I took"   # post a batch
 ./notebook.py feedback ok "tomé | stress on the é"      # mark them; wrong ones get a rewrite field
 ./notebook.py end                                       # session score
 ./notebook.py stop
 ./notebook.py --help                                    # all commands and exit codes
 ```
+
+While you answer, the terminal stays free: the tutor runs `./notebook.py watch` under Claude Code's
+Monitor tool, which wakes it with your answers when you send them. Without Monitor, it waits with
+`ask --wait` in the background instead (one more step per batch, so a few more tokens).
 
 To use another port, set `NOTEBOOK_PORT` (e.g. in `.claude/settings.local.json` under `env`).
 
