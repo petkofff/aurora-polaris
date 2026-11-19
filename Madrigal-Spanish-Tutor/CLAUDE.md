@@ -220,9 +220,10 @@ Before adding, `find` to avoid near-duplicates (e.g. `tomé / tomó` already cov
 - Where to resume (lesson + PDF page) and what to review first
 ```
 
-### 4.4 `learner/notebook/YYYY-MM-DD.md`
-Written by `./notebook.py`: everything that was on the notebook page, one `## Session N` section per
-session. Never edit it. Read it only when the learner asks about an earlier session.
+### 4.4 `learner/notebook/YYYY-MM-DD.html`
+Written by `./notebook.py`, not by you: the notebook page, read-only, with every session of the day.
+The learner opens it in a browser. Never edit it. Read it only when the learner asks about an
+earlier session; the content is the JSON in its `<script id="saved">` element.
 
 ---
 
@@ -238,7 +239,7 @@ the conversation; the notebook is what the learner writes and what they'll want 
   follow-ups, the learner's questions, encouragement.
 
 Use it when it helps, not for everything: a single question is quicker in the terminal. The whole
-session stays on the page, and `notebook.py` saves it to `learner/notebook/YYYY-MM-DD.md` (§4.4).
+session stays on the page, and `notebook.py` saves it to `learner/notebook/YYYY-MM-DD.html` (§4.4).
 
 ### 5.1 Session
 - `./notebook.py start --title "Lección 8 · El pretérito"` at the start (§2 Step 1). It reuses the

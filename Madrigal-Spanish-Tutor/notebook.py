@@ -2,7 +2,8 @@
 """The tutor's notebook: a local web page beside the terminal, where the learner answers batches of
 prompts (each in its own numbered field), rewrites what they got wrong, and finds the tutor's notes.
 
-The whole session stays on the page and is saved to learner/notebook/YYYY-MM-DD.md for rereading.
+The whole session stays on the page and is saved to learner/notebook/YYYY-MM-DD.html: the same page,
+read-only, with every session of the day, to open in a browser later.
 
 Commands:
   start [--title T]           start the server (or reuse it) and print the link; begins a new session
@@ -39,10 +40,13 @@ Env: NOTEBOOK_PORT (default 8765), NOTEBOOK_TOKEN_FILE (default .notebook-token 
      NOTEBOOK_TODAY (YYYY-MM-DD, override today's date — for testing).
 """
 import argparse
+import base64
 import copy
+import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -148,13 +152,9 @@ class Session:
         self.title = ""
         self.items = []
         self.ended = False
-        self.path = NOTEBOOK_DIR / f"{day}.md"
-        try:
-            existing = self.path.read_text()
-        except FileNotFoundError:
-            existing = ""
-        self.prefix = existing.rstrip("\n") + "\n" if existing else f"# Notebook — {day}\n"
-        self.number = sum(line.startswith("## Session ") for line in existing.splitlines()) + 1
+        self.path = NOTEBOOK_DIR / f"{day}.html"
+        self.earlier = read_saved(self.path)          # the day's earlier sessions, from the file
+        self.number = max((s["number"] for s in self.earlier), default=0) + 1
         self.next_id = 1
         if title:
             self.set_title(title)
@@ -191,57 +191,52 @@ class Session:
                 "items": items, "score": self.score()}
 
     # --- the notebook file ---
-    def markdown(self):
-        out = [f"## Session {self.number}", ""]
-        for item in self.items:
-            kind = item["kind"]
-            if kind == "title":
-                out += [f"### {item['text']}", ""]
-            elif kind == "note":
-                if item["title"]:
-                    out += [f"#### {item['title']}", ""]
-                out += [item["text"].strip(), ""]
-            elif kind == "batch":
-                out += [f"#### {item['title'] or 'Questions'}", ""]
-                for n, row in enumerate(item["rows"], 1):
-                    lines = []
-                    for k, attempt in enumerate(row["attempts"]):
-                        if attempt["text"] is None:
-                            continue
-                        mark = attempt["mark"]
-                        text = attempt["text"] or "(no answer)"
-                        if mark is None:
-                            result = ""
-                        elif mark["ok"]:
-                            result = " ✓" + (f" ({mark['note']})" if mark["note"] else "")
-                        else:
-                            result = f" ✗ **{mark['correct']}**" + (f" — {mark['note']}" if mark["note"] else "")
-                        lines.append(f"{n}. {row['prompt']} → {text}{result}" if k == 0
-                                     else f"   - try {k + 1}: {text}{result}")
-                    out += lines or [f"{n}. {row['prompt']} →"]
-                first, final, total = batch_score(item)
-                extra = []
-                if item["cancelled"]:
-                    extra.append("Answered in the terminal.")
-                if total:
-                    extra.append(score_text(first, final, total) + ".")
-                if item["comment"]:
-                    extra.append(item["comment"])
-                out += ["", f"*{' '.join(extra)}*", ""] if extra else [""]
-            elif kind == "summary":
-                first, final, total = item["score"]
-                out += [f"**Session score:** {score_text(first, final, total)}." if total
-                        else "**Session score:** no marked answers.", ""]
-        return "\n".join(out).rstrip("\n") + "\n"
-
     def save(self):
         if not any(i["kind"] != "title" for i in self.items):
             return                                  # nothing worth a file yet
+        sessions = self.earlier + [{"number": self.number, "items": self.view()["items"]}]
         NOTEBOOK_DIR.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=NOTEBOOK_DIR, prefix=".tmp-", suffix=".md")
+        fd, tmp = tempfile.mkstemp(dir=NOTEBOOK_DIR, prefix=".tmp-", suffix=".html")
         with os.fdopen(fd, "w") as f:
-            f.write(self.prefix + "\n" + self.markdown())
+            f.write(saved_page(self.day, sessions))
         os.replace(tmp, self.path)
+
+
+SAVED_RE = re.compile(r'<script type="application/json" id="saved">(.*?)</script>', re.S)
+
+
+def saved_page(day, sessions):
+    """The notebook file: the page in read-only mode, with the sessions embedded as JSON."""
+    data = json.dumps({"day": day, "sessions": sessions}, ensure_ascii=False)
+    # Inside the JSON, < > & only occur in strings, where these escapes mean the same thing; without
+    # them the text can't close the <script> element.
+    data = data.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
+    script = PAGE.split("<script>", 1)[1].split("</script>", 1)[0]
+    digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
+    csp = (f'<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '
+           f'script-src \'sha256-{digest}\'; style-src \'unsafe-inline\'">')
+    page = PAGE.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n' + csp, 1)
+    return page.replace("<script>", f'<script type="application/json" id="saved">{data}</script>\n<script>', 1)
+
+
+def read_saved(path):
+    """The sessions stored in a notebook file ([] if there's none). An unreadable file is moved aside."""
+    try:
+        text = path.read_text()
+    except FileNotFoundError:
+        return []
+    m = SAVED_RE.search(text)
+    try:
+        sessions = json.loads(m.group(1))["sessions"]
+        if all(isinstance(x, dict) and isinstance(x.get("number"), int) and isinstance(x.get("items"), list)
+               for x in sessions):
+            return sessions
+    except (AttributeError, ValueError, KeyError, TypeError):
+        pass
+    aside = path.with_name(f"{path.stem}-unreadable-{int(time.time())}{path.suffix}")
+    path.rename(aside)
+    print(f"warning: couldn't read {shown_path(path)}; moved it to {aside.name}", file=sys.stderr)
+    return []
 
 
 class Notebook:
@@ -965,6 +960,9 @@ PAGE = r"""<!doctype html>
   .card, .divider { scroll-margin-top: 96px; }
   .score { font-size: 15px; color: var(--muted); }
   .divider { font-size: 20px; margin: 28px 0 12px; padding-top: 4px; }
+  .session { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+             color: var(--muted); margin: 36px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
+  .session:first-child { margin-top: 0; border-top: 0; }
   .note { background: var(--note); }
   .note table { border-collapse: collapse; margin: 8px 0; }
   .note th, .note td { border: 1px solid var(--line); padding: 4px 10px; text-align: left; }
@@ -1007,6 +1005,7 @@ PAGE = r"""<!doctype html>
 const TOKEN = new URLSearchParams(location.search).get("t") || "";
 const HEAD = {"X-Notebook-Token": TOKEN, "Content-Type": "application/json"};
 const MAX_TRIES = 3;
+const SAVED = document.getElementById("saved");   // set in a saved notebook file: read-only
 const itemsEl = document.getElementById("items");
 const rendered = new Map();   // item id -> {key, el}
 let version = -1, sessionKey = null, firstLoad = true;
@@ -1099,7 +1098,7 @@ function markEl(mark) {
 }
 
 function renderBatch(batch) {
-  const open = batch.status === "open";
+  const open = batch.status === "open" && !SAVED;
   const inputs = [];
   const card = el("section", {class: "card batch"});
   const draftKey = (row, k) => "nb-draft-" + batch.id + "-" + row + "-" + k;
@@ -1153,8 +1152,10 @@ function renderBatch(batch) {
     }));
     foot.append(el("div", {class: "actions"}, button,
       el("span", {class: "muted"}, "Enter moves to the next field; on the last one it sends."), err));
+  } else if (SAVED && batch.status === "open") {
+    foot.append(el("p", {class: "muted"}, "Not answered."));
   } else if (batch.status === "answered") {
-    foot.append(el("p", {class: "muted"}, "Sent. The tutor is checking…"));
+    foot.append(el("p", {class: "muted"}, SAVED ? "Not marked." : "Sent. The tutor is checking…"));
   } else if (batch.status === "cancelled") {
     foot.append(el("p", {class: "muted"}, "Answered in the terminal."));
   }
@@ -1224,7 +1225,21 @@ async function loop() {
     }
   }
 }
-loop();
+function showSaved(data) {
+  const name = "Notebook · " + data.day;
+  document.title = name;
+  document.getElementById("title").textContent = name;
+  document.getElementById("conn").hidden = true;
+  document.getElementById("session").textContent =
+    data.sessions.length + (data.sessions.length === 1 ? " session" : " sessions");
+  for (const s of data.sessions) {
+    itemsEl.append(el("h2", {class: "session"}, "Session " + s.number));
+    for (const item of s.items) itemsEl.append(renderItem(item));
+  }
+  document.getElementById("empty").hidden = data.sessions.length > 0;
+}
+
+if (SAVED) showSaved(JSON.parse(SAVED.textContent)); else loop();
 </script>
 </body>
 </html>

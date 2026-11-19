@@ -52,7 +52,8 @@ what you'll want to reread. The conversation stays in the terminal.
   end of the session the page shows the session score, and the tutor copies it into the session log.
 
 The page heading shows the current lesson and topic, and the whole session stays on the page.
-Everything is also saved to `learner/notebook/YYYY-MM-DD.md`, so you can reread it later.
+Everything is also saved to `learner/notebook/YYYY-MM-DD.html`: the same page, read-only, with every
+session of the day. Open it in a browser to reread it; it works without the server.
 
 The tutor starts the server at the start of each session (`./notebook.py start`) and gives you the
 link, `http://127.0.0.1:8765/?t=…`. The server listens on 127.0.0.1 only. The token in the link
@@ -90,7 +91,7 @@ To use another port, set `NOTEBOOK_PORT` (e.g. in `.claude/settings.local.json` 
 | `learner/log/YYYY-MM-DD.md` | What happened in each session and where to resume | tutor |
 | `learner/textbook-mapping.md` | Lesson → PDF page ranges and topics | tutor, at first launch |
 | `vocab.py` | Command-line tool for the vocabulary database | you |
-| `learner/notebook/YYYY-MM-DD.md` | Everything that was on the notebook page, per session | `notebook.py` |
+| `learner/notebook/YYYY-MM-DD.html` | The day's notebook pages, read-only, to open in a browser | `notebook.py` |
 | `notebook.py` | The notebook page: a local web page beside the terminal | you |
 | `tests/` | Tests for `vocab.py` and `notebook.py` | you |
 

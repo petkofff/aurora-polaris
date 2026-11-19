@@ -39,7 +39,9 @@ for the layout and the rules for adding a tutor.
   them through their CLIs, so keep their output and exit codes stable and readable.
 - `notebook.py` serves the notebook page (HTML and JavaScript inside the script, no external files)
   on 127.0.0.1 and checks the token and the `Host` header on every request. It keeps the session in
-  memory and rewrites the session's section of `learner/notebook/YYYY-MM-DD.md` on every change.
+  memory and rewrites `learner/notebook/YYYY-MM-DD.html` on every change: the same page in read-only
+  mode, with the day's sessions embedded as JSON (`<`, `>`, `&` escaped) and a CSP that allows only
+  the page's own script, by hash. Earlier sessions of the day are read back from that JSON.
   The tutor keeps `watch` running under the Monitor tool: its stdout is the event stream, so it
   prints only the learner's submissions (and `NOTEBOOK DOWN`), and each one wakes the tutor with
   the answers in the notification. A submission counts as printed only when the client confirms it

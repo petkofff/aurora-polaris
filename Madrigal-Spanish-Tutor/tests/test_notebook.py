@@ -4,9 +4,11 @@ Each class runs its own server on a free port, with the token file and the noteb
 temporary folder (NOTEBOOK_PORT, NOTEBOOK_TOKEN_FILE, NOTEBOOK_DIR) and a fixed date
 (NOTEBOOK_TODAY), so the tests never touch a running notebook, .notebook-token or learner/.
 """
+import base64
 import hashlib
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -177,8 +179,20 @@ class NotebookCase(unittest.TestCase):
         body = {"id": batch_id if batch_id is not None else batch["id"], "rows": rows, "answers": answers}
         return self.http("POST", "/api/submit", body)[0]
 
-    def notebook_file(self):
-        return (Path(self.env["NOTEBOOK_DIR"]) / f"{TODAY}.md").read_text()
+    def notebook_path(self):
+        return Path(self.env["NOTEBOOK_DIR"]) / f"{TODAY}.html"
+
+    def saved(self):
+        """The data embedded in today's notebook file."""
+        text = self.notebook_path().read_text()
+        m = re.search(r'<script type="application/json" id="saved">(.*?)</script>', text, re.S)
+        self.assertIsNotNone(m, "no saved data in the notebook file")
+        data = json.loads(m.group(1))
+        self.assertEqual(data["day"], TODAY)
+        return data
+
+    def saved_texts(self, session):
+        return [i.get("text") for i in session["items"] if i["kind"] in ("title", "note")]
 
 
 class TestAccess(NotebookCase):
@@ -425,14 +439,35 @@ class TestSession(NotebookCase):
         self.assertEqual(self.state()["items"][-1]["kind"], "summary")
         self.assertIn("Session score", self.ok("status").replace("Score so far", "Session score"))
 
-        text = self.notebook_file()
-        self.assertTrue(text.startswith(f"# Notebook — {TODAY}\n"))
-        for expected in ("## Session 1", "### Lección 8 · El pretérito", "#### New words",
-                         "| anoche | last night |", "#### Into Spanish",
-                         "1. I took → tome ✗ **tomé** — stress on the é", "   - try 2: tomé ✓",
-                         "2. the dinner → la cena ✓", "*1/2 right first try · 2/2 after rewriting. Watch the accents.*",
-                         "**Session score:** 1/2 right first try · 2/2 after rewriting."):
-            self.assertIn(expected, text)
+        [session] = self.saved()["sessions"]
+        self.assertEqual(session["number"], 1)
+        self.assertEqual([i["kind"] for i in session["items"]], ["title", "note", "batch", "summary"])
+        title, note, batch, summary = session["items"]
+        self.assertEqual(title["text"], "Lección 8 · El pretérito")
+        self.assertEqual(note["title"], "New words")
+        self.assertIn("| anoche | last night |", note["text"])
+        self.assertEqual((batch["title"], batch["status"], batch["score"], batch["comment"]),
+                         ("Into Spanish", "done", [1, 2, 2], "Watch the accents."))
+        self.assertEqual([[a["text"] for a in r["attempts"]] for r in batch["rows"]], [["tome", "tomé"], ["la cena"]])
+        self.assertEqual(batch["rows"][0]["attempts"][0]["mark"],
+                         {"ok": False, "correct": "tomé", "note": "stress on the é"})
+        self.assertEqual(summary["score"], [1, 2, 2])
+
+    def test_the_file_is_the_page_and_nothing_in_it_can_run(self):
+        evil = "</script><script>alert(1)</script> & <img src=x onerror=alert(1)> <!--"
+        self.ok("note", "--title", evil, evil)
+        text = self.notebook_path().read_text()
+        self.assertTrue(text.startswith("<!doctype html>"))
+        self.assertNotIn("<img", text)
+        self.assertNotIn("alert(1)</script>", text)
+        self.assertEqual(text.count("</script>"), 2)       # the data and the page's own script
+        note = self.saved()["sessions"][0]["items"][-1]
+        self.assertEqual((note["title"], note["text"]), (evil, evil))
+        # Only the page's own script may run: the CSP pins its hash.
+        script = text.rsplit("<script>", 1)[1].split("</script>", 1)[0]
+        digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
+        self.assertIn(f"script-src 'sha256-{digest}'", text)
+        self.assertIn("default-src 'none'", text)
 
     def test_title_changes_add_a_section(self):
         self.ok("title", "Lección 9")
@@ -474,11 +509,9 @@ class TestStartStop(NotebookCase):
         st = self.state()
         self.assertEqual((st["session"], st["title"], len(st["items"])), (2, "Lección 4", 1))
         self.ok("note", "Adiós")
-        text = self.notebook_file()
-        self.assertIn("## Session 1", text)
-        self.assertIn("## Session 2\n\n### Lección 4\n\nAdiós", text)
-        self.assertLess(text.index("Hola"), text.index("## Session 2"))
-        self.assertLess(text.index("## Session 2"), text.index("Adiós"))
+        first, second = self.saved()["sessions"]
+        self.assertEqual((first["number"], self.saved_texts(first)), (1, ["Lección 3", "Hola"]))
+        self.assertEqual((second["number"], self.saved_texts(second)), (2, ["Lección 4", "Adiós"]))
         self.assertIn("Stopped", self.ok("stop"))
         self.fails("status")
 
@@ -512,10 +545,19 @@ class TestStartStop(NotebookCase):
         self.stop_server()
         self.start_server()
         self.ok("note", "Segunda")
-        text = self.notebook_file()
-        self.assertEqual(text.count(f"# Notebook — {TODAY}"), 1)
-        self.assertLess(text.index("Primera"), text.index("## Session 2"))
-        self.assertLess(text.index("## Session 2"), text.index("Segunda"))
+        self.assertEqual([(x["number"], self.saved_texts(x)) for x in self.saved()["sessions"]],
+                         [(1, ["Primera"]), (2, ["Segunda"])])
+        self.assertEqual(self.state()["session"], 2)
+
+    def test_an_unreadable_file_is_moved_aside(self):
+        folder = Path(self.env["NOTEBOOK_DIR"])
+        self.notebook_path().write_text("<p>not a notebook</p>")
+        self.start_server()
+        self.addCleanup(self.stop_server)
+        self.ok("note", "Hola")
+        [aside] = folder.glob(f"{TODAY}-unreadable-*.html")
+        self.assertEqual(aside.read_text(), "<p>not a notebook</p>")
+        self.assertEqual([x["number"] for x in self.saved()["sessions"]], [1])
 
 
 if __name__ == "__main__":
