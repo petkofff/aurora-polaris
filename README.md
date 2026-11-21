@@ -1,4 +1,9 @@
-# Aurora Polaris
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/horizontal-dark.svg">
+    <img src="assets/logo/horizontal-light.svg" alt="Aurora Polaris" width="420">
+  </picture>
+</h1>
 
 A suite of textbook tutors that run in [Claude Code](https://claude.com/claude-code). Each tutor
 follows one textbook, lesson by lesson, and remembers the learner between sessions through notes
