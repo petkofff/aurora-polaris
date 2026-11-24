@@ -959,13 +959,15 @@ PAGE = r"""<!doctype html>
 <style>
   /* An exercise book in warm monochrome. Colour is scarce: the logo, one accent (Send, focus) and
      the teacher's two inks: sage for right (✓) and rose for corrections (✗, the margin line).
-     Everything else is neutral.
+     Everything else is neutral. The tutor's notes sit on a slightly darker sheet, like a handout
+     pasted into the book.
      The logo uses the deep set on light and the bright set on dark (assets/logo/GUIDELINES.md). */
   :root {
     --ray-base: #0E9686; --ray-mid: #6A48D8; --ray-tip: #D9366A;
     --bg: #fbfbfa; --fg: #1f1e1d; --muted: #696864; --border: #e9e8e6; --input-line: #8f8e8a;
+    --note-bg: #f1efeb; --note-line: #dddad4;
     --accent: #6A48D8; --on-accent: #ffffff; --correction: #B42E4F; --right: #4A7656; --margin: rgba(180, 46, 79, .35);
-    --m: 3.5rem; --gap: 1.1rem; --inset: calc(var(--m) + var(--gap));
+    --m: 3.5rem; --gap: 1.1rem; --inset: calc(var(--m) + var(--gap)); --pad: 1.5rem;
     --serif: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, "Noto Serif", "Droid Serif", Georgia, serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --sheet: linear-gradient(var(--margin), var(--margin)) no-repeat var(--m) 0 / 1px 100%;
@@ -975,17 +977,19 @@ PAGE = r"""<!doctype html>
     :root {
       --ray-base: #2BD4C0; --ray-mid: #8B6CF0; --ray-tip: #FF5C8A;
       --bg: #191918; --fg: #ebeae8; --muted: #9d9c98; --border: #2d2c2a; --input-line: #71706c;
+      --note-bg: #242321; --note-line: #3a3835;
       --accent: #9d85f2; --on-accent: #191918; --correction: #f0849b; --right: #8DC09B; --margin: rgba(240, 132, 155, .35);
     }
   }
   * { box-sizing: border-box; }
   html { background: var(--bg); scroll-padding-top: 6.5rem; }
   body { margin: 0; color: var(--fg); font: 1rem/1.6 var(--serif); }
-  main { max-width: calc(var(--inset) + 34rem + 1.5rem); min-height: 100vh; margin: 0 auto;
-         padding: 0 1.5rem 40vh 0; background: var(--sheet); }
+  main { max-width: calc(var(--inset) + 34rem + var(--pad)); min-height: 100vh; margin: 0 auto;
+         padding: 0 var(--pad) 40vh 0; background: var(--sheet); }
 
   #top { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: var(--m) 1fr;
-         column-gap: var(--gap); align-items: center; padding: 1.2rem 0 .9rem; margin-bottom: 1.5rem;
+         column-gap: var(--gap); align-items: center; padding: 1.2rem var(--pad) .9rem 0;
+         margin: 0 calc(-1 * var(--pad)) 1.5rem 0;   /* covers the note sheets, which reach into the padding */
          background: var(--sheet), var(--bg); box-shadow: 0 1px 0 var(--border); }
   #logo { justify-self: end; width: 28px; height: 28px; margin-right: .7rem; }
   #logo stop:nth-child(1) { stop-color: var(--ray-base); }
@@ -1005,6 +1009,8 @@ PAGE = r"""<!doctype html>
   #items h2.session:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
   .muted { color: var(--muted); }
 
+  #items > .note { background: var(--note-bg); margin: 0 -.8rem 2.75rem; padding: .85rem .8rem .9rem;
+                   border-radius: 3px; }   /* the text stays aligned with the rest of the page */
   .note p, .note ul, .note ol { margin: .45rem 0; }
   .note ul, .note ol { padding-left: 1.2em; }
   .note h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 .2rem; }
@@ -1012,7 +1018,7 @@ PAGE = r"""<!doctype html>
   .table { overflow-x: auto; margin: .6rem 0; }
   .note table { border-collapse: collapse; }
   .note th, .note td { text-align: left; vertical-align: top; padding: .25rem 1.4rem .25rem 0;
-                       border-bottom: 1px solid var(--border); }
+                       border-bottom: 1px solid var(--note-line); }
   .note th { font-weight: 600; }
 
   .batch > header { display: flex; justify-content: space-between; align-items: baseline; gap: .25rem 1rem;
@@ -1053,8 +1059,7 @@ PAGE = r"""<!doctype html>
   .grade + p { margin: .2rem 0 0; color: var(--muted); }
 
   @media (max-width: 480px) {
-    :root { --m: 2.5rem; --gap: .8rem; font-size: 18px; }
-    main { padding-right: 1rem; }
+    :root { --m: 2.5rem; --gap: .8rem; --pad: 1rem; font-size: 18px; }
     #logo { width: 24px; height: 24px; margin-right: .5rem; }
   }
 </style>

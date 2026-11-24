@@ -49,8 +49,9 @@ for the layout and the rules for adding a tutor.
   `feedback --wait` / `wait` are the fallback for agents without Monitor. The page's Markdown
   renderer builds DOM nodes and never uses `innerHTML`; keep it that way.
 - The page looks like an exercise book: one column with a margin line, item numbers and ✓/✗ in the
-  margin, answers on writing lines (inputs with only a bottom border). No cards, boxes or tinted
-  backgrounds. Text is a system serif stack, small interface text `system-ui`; no webfont.
+  margin, answers on writing lines (inputs with only a bottom border). No cards or boxes; the only
+  tinted background is the tutor's notes, on a slightly darker sheet (`--note-bg`), so they
+  stand out from the exercises. Text is a system serif stack, small interface text `system-ui`; no webfont.
 - Colour is scarce: warm monochrome neutrals, the logo, one accent (`--accent`: Send and focus only)
   and the teacher's two inks: `--right` (sage: ✓ and notes on right answers) and `--correction`
   (rose: ✗, corrections, the margin line). Prompts
