@@ -17,10 +17,11 @@ import threading
 import time
 import unittest
 from pathlib import Path
-from urllib import error, request
+from urllib import error, parse, request
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = REPO / "notebook.py"
+LOGO = REPO.parent / "assets" / "logo"
 REAL_TOKEN = REPO / ".notebook-token"
 REAL_NOTEBOOK = REPO / "learner" / "notebook"
 TODAY = "2026-10-31"
@@ -202,6 +203,20 @@ class TestAccess(NotebookCase):
         self.assertIn(b"<title>Notebook</title>", body)
         self.assertEqual(self.http("GET", "/", token=False)[0], 403)
         self.assertEqual(self.http("GET", "/?t=wrong", token=False)[0], 403)
+
+    def test_the_page_shows_the_logo_from_the_assets(self):
+        # The page copies the mark and the favicon from assets/logo/; a new logo there must be copied too.
+        page = self.http("GET", f"/?t={self.token}", token=False)[1].decode()
+        path = re.search(r' d="([^"]+)"', (LOGO / "symbol-small.svg").read_text()).group(1)
+        self.assertEqual(re.search(r' d="([^"]+)"', (LOGO / "tile-small.svg").read_text()).group(1), path)
+        self.assertIn(f'<path fill="url(#rays)" d="{path}"/>', page)
+        icon = re.search(r'<link rel="icon" type="image/svg\+xml" href="data:image/svg\+xml,([^"]+)">', page)
+        tile = (LOGO / "tile-small.svg").read_text().replace('"', "'")
+        self.assertEqual(parse.unquote(icon.group(1)), re.sub(r"<title>.*?</title>", "", tile).strip())
+        with OPENER.open(f"http://127.0.0.1:{self.port}/?t={self.token}", timeout=10) as r:
+            csp = r.headers["Content-Security-Policy"]
+        self.assertIn("default-src 'none'", csp)
+        self.assertIn("img-src data:;", csp)
 
     def test_api_needs_the_token(self):
         self.assertEqual(self.http("GET", "/api/state", token=False)[0], 403)
@@ -468,6 +483,7 @@ class TestSession(NotebookCase):
         digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
         self.assertIn(f"script-src 'sha256-{digest}'", text)
         self.assertIn("default-src 'none'", text)
+        self.assertIn("img-src data:\">", text)           # the favicon, and no other images
 
     def test_title_changes_add_a_section(self):
         self.ok("title", "Lección 9")

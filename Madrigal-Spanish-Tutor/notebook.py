@@ -214,7 +214,7 @@ def saved_page(day, sessions):
     script = PAGE.split("<script>", 1)[1].split("</script>", 1)[0]
     digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
     csp = (f'<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '
-           f'script-src \'sha256-{digest}\'; style-src \'unsafe-inline\'">')
+           f'script-src \'sha256-{digest}\'; style-src \'unsafe-inline\'; img-src data:">')
     page = PAGE.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n' + csp, 1)
     return page.replace("<script>", f'<script type="application/json" id="saved">{data}</script>\n<script>', 1)
 
@@ -441,7 +441,7 @@ class Handler(BaseHTTPRequestHandler):
         if ctype.startswith("text/html"):
             self.send_header("Content-Security-Policy",
                              "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
-                             "connect-src 'self'; frame-ancestors 'none'")
+                             "img-src data:; connect-src 'self'; frame-ancestors 'none'")
         self.end_headers()
         self.wfile.write(data)
 
@@ -925,78 +925,148 @@ def main(argv=None):
 
 # --------------------------------------------------------------------------- page
 
+# The Aurora Polaris mark: the rays' path from ../assets/logo/symbol-small.svg (the same path is in
+# tile-small.svg). Those files are generated in the logo repository; when they change, copy the new
+# path here and don't edit it by hand. The page colours it with --ray-* (deep set on light, bright on dark).
+LOGO_PATH = ("M10.00 194.71L15.50 96.21A4.00 4.00 0 0 1 23.50 96.21L29.00 194.71A9.50 9.50 0 0 1 10.00 194.71Z"
+             "M31.70 217.69L37.20 110.54A4.00 4.00 0 0 1 45.20 110.54L50.70 217.69A9.50 9.50 0 0 1 31.70 217.69Z"
+             "M53.40 227.74L58.90 112.78A4.00 4.00 0 0 1 66.90 112.78L72.40 227.74A9.50 9.50 0 0 1 53.40 227.74Z"
+             "M75.10 221.01L80.60 99.86A4.00 4.00 0 0 1 88.60 99.86L94.10 221.01A9.50 9.50 0 0 1 75.10 221.01Z"
+             "M96.80 200.08L102.30 74.95A4.00 4.00 0 0 1 110.30 74.95L115.80 200.08A9.50 9.50 0 0 1 96.80 200.08Z"
+             "M118.50 172.94L124.00 46.44A4.00 4.00 0 0 1 132.00 46.44L137.50 172.94A9.50 9.50 0 0 1 118.50 172.94Z"
+             "M140.20 149.96L145.70 24.83A4.00 4.00 0 0 1 153.70 24.83L159.20 149.96A9.50 9.50 0 0 1 140.20 149.96Z"
+             "M161.90 139.92L167.40 18.76A4.00 4.00 0 0 1 175.40 18.76L180.90 139.92A9.50 9.50 0 0 1 161.90 139.92Z"
+             "M183.60 146.64L189.10 31.69A4.00 4.00 0 0 1 197.10 31.69L202.60 146.64A9.50 9.50 0 0 1 183.60 146.64Z"
+             "M205.30 167.57L210.80 60.42A4.00 4.00 0 0 1 218.80 60.42L224.30 167.57A9.50 9.50 0 0 1 205.30 167.57Z"
+             "M227.00 194.71L232.50 96.21A4.00 4.00 0 0 1 240.50 96.21L246.00 194.71A9.50 9.50 0 0 1 227.00 194.71Z")
+
+# The favicon: ../assets/logo/tile-small.svg (the mark on its Night tile), as a data: URI.
+FAVICON = ("data:image/svg+xml," + parse.quote(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><defs><linearGradient id='g' "
+    "gradientUnits='userSpaceOnUse' x1='0' y1='237.2' x2='0' y2='14.8'><stop offset='0' stop-color='#2BD4C0'/>"
+    "<stop offset='0.45' stop-color='#8B6CF0'/><stop offset='1' stop-color='#FF5C8A'/></linearGradient></defs>"
+    "<rect width='256' height='256' rx='56' fill='#0A0818'/>"
+    "<g transform='translate(128 124) scale(0.8) translate(-128 -126.0)'>"
+    f"<path fill='url(#g)' d='{LOGO_PATH}'/></g></svg>", safe=" /:=',()-."))
+
 PAGE = r"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Notebook</title>
+<link rel="icon" type="image/svg+xml" href="__FAVICON__">
 <style>
+  /* An exercise book: a margin line, the learner's pen (violet), the teacher's ink (pink).
+     Colours from assets/logo/GUIDELINES.md: the deep set on light, the bright set on Night. */
   :root {
-    --bg: #faf8f4; --card: #ffffff; --text: #1f1d1a; --muted: #6d675e; --line: #e4dfd6;
-    --accent: #b5482a; --accent-text: #ffffff; --ok: #2f7d4f; --ok-bg: #e8f4ec; --bad: #b3261e; --bad-bg: #fbeceb;
-    --field: #ffffff; --note: #f6f1e7;
+    --ray-base: #0E9686; --ray-mid: #6A48D8; --ray-tip: #D9366A;
+    --paper: #fdfdfb; --ink: #0A0818; --pencil: #67636f; --line: #e8e5ec; --write: #8e899a;
+    --rule: rgba(217, 54, 106, .4); --pen: #6A48D8; --teacher: #B82A58; --right: #0B7A6D;
+    --focus: #6A48D8; --on-focus: #ffffff;
+    --m: 3.5rem; --gap: 1.1rem; --inset: calc(var(--m) + var(--gap));
+    --serif: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, "Noto Serif", "Droid Serif", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --sheet: linear-gradient(var(--rule), var(--rule)) no-repeat var(--m) 0 / 1px 100%;
+    font-size: 19px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #1b1a18; --card: #252320; --text: #ece8e1; --muted: #a39d93; --line: #3a3732;
-      --accent: #e0805f; --accent-text: #1b1a18; --ok: #7cc79a; --ok-bg: #1f3427; --bad: #f08c84; --bad-bg: #3d2523;
-      --field: #1f1d1b; --note: #2b2823;
+      --ray-base: #2BD4C0; --ray-mid: #8B6CF0; --ray-tip: #FF5C8A;
+      --paper: #0f0d17; --ink: #ece9f2; --pencil: #a29dae; --line: #2a2636; --write: #6c667b;
+      --rule: rgba(255, 92, 138, .45); --pen: #ab96f7; --teacher: #ff7aa0; --right: #2BD4C0;
+      --focus: #8B6CF0; --on-focus: #0A0818;
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 18px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 720px; margin: 0 auto; padding: 16px 16px 40vh; }
-  #top { position: sticky; top: 0; z-index: 1; background: var(--bg); padding: 8px 0 12px;
-         border-bottom: 1px solid var(--line); margin-bottom: 16px; }
-  #top h1 { font-size: 22px; margin: 0; }
-  #sub { font-size: 14px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
-  #conn.off { color: var(--bad); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin: 0 0 16px; }
-  .card h2 { font-size: 18px; margin: 0; }
-  .card > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
-                   margin-bottom: 4px; }
-  .card, .divider { scroll-margin-top: 96px; }
-  .score { font-size: 15px; color: var(--muted); }
-  .divider { font-size: 20px; margin: 28px 0 12px; padding-top: 4px; }
-  .session { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
-             color: var(--muted); margin: 36px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
-  .session:first-child { margin-top: 0; border-top: 0; }
-  .note { background: var(--note); }
-  .note table { border-collapse: collapse; margin: 8px 0; }
-  .note th, .note td { border: 1px solid var(--line); padding: 4px 10px; text-align: left; }
-  .note p, .note ul, .note ol { margin: 8px 0; }
-  .note code { font-size: 16px; }
-  .muted { color: var(--muted); }
+  html { background: var(--paper); scroll-padding-top: 6.5rem; }
+  body { margin: 0; color: var(--ink); font: 1rem/1.6 var(--serif); }
+  main { max-width: calc(var(--inset) + 34rem + 1.5rem); min-height: 100vh; margin: 0 auto;
+         padding: 0 1.5rem 40vh 0; background: var(--sheet); }
+
+  #top { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: var(--m) 1fr;
+         column-gap: var(--gap); align-items: center; padding: 1.2rem 0 .9rem; margin-bottom: 1.5rem;
+         background: var(--sheet), var(--paper); box-shadow: 0 1px 0 var(--line); }
+  #logo { justify-self: end; width: 28px; height: 28px; margin-right: .7rem; }
+  #logo stop:nth-child(1) { stop-color: var(--ray-base); }
+  #logo stop:nth-child(2) { stop-color: var(--ray-mid); }
+  #logo stop:nth-child(3) { stop-color: var(--ray-tip); }
+  #top h1 { font-size: 1.3rem; line-height: 1.25; font-weight: 600; margin: 0; }
+  #sub { font: .72rem/1.5 var(--sans); color: var(--pencil); display: flex; gap: .75rem; flex-wrap: wrap; }
+  #conn.off { color: var(--teacher); }
+
+  #items, #empty { padding-left: var(--inset); }
+  #items > * { margin: 0 0 2.75rem; }
+  #items h2 { font-size: 1.1rem; line-height: 1.35; font-weight: 600; margin: 0 0 .35rem; }
+  #items h2.divider { font-size: 1.45rem; line-height: 1.25; margin: 3.5rem 0 1.5rem; }
+  #items h2.divider:first-child, #items h2.session + h2.divider { margin-top: 0; }
+  #items h2.session { font-size: 1.45rem; line-height: 1.25; margin: 4rem 0 1.75rem calc(-1 * var(--inset));
+                      padding: 1.5rem 0 0 var(--inset); border-top: 1px solid var(--line); }
+  #items h2.session:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .muted { color: var(--pencil); }
+
+  .note p, .note ul, .note ol { margin: .45rem 0; }
+  .note ul, .note ol { padding-left: 1.2em; }
+  .note h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 .2rem; }
+  .note code { font: .85em/1 ui-monospace, "DejaVu Sans Mono", monospace; }
+  .table { overflow-x: auto; margin: .6rem 0; }
+  .note table { border-collapse: collapse; }
+  .note th, .note td { text-align: left; vertical-align: top; padding: .25rem 1.4rem .25rem 0;
+                       border-bottom: 1px solid var(--line); }
+  .note th { font-weight: 600; }
+
+  .batch > header { display: flex; justify-content: space-between; align-items: baseline; gap: .25rem 1rem;
+                    flex-wrap: wrap; }
+  .score { font: .72rem/1.5 var(--sans); color: var(--pencil); }
   ol.rows { list-style: none; margin: 0; padding: 0; }
-  ol.rows > li { display: grid; grid-template-columns: 2em 1fr; gap: 2px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-  ol.rows > li:last-child { border-bottom: 0; }
-  .n { font-weight: 600; color: var(--muted); text-align: right; }
-  .prompt { font-weight: 500; }
-  .body { grid-column: 2; }
-  .attempt { margin-top: 2px; }
-  .try { font-size: 14px; color: var(--muted); margin-right: 6px; }
-  .wrong { text-decoration: line-through; text-decoration-color: var(--bad); }
-  .mark { display: inline-block; margin: 4px 0 0 6px; padding: 1px 8px; border-radius: 6px; font-size: 16px; }
-  .mark.ok { background: var(--ok-bg); color: var(--ok); }
-  .mark.bad { background: var(--bad-bg); color: var(--bad); }
-  input[type=text] { width: 100%; margin-top: 6px; font: inherit; padding: 8px 10px; color: var(--text);
-                     background: var(--field); border: 1px solid var(--line); border-radius: 8px; }
-  input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
-  .actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
-  .send { font: inherit; font-weight: 600; white-space: nowrap; padding: 8px 20px; border: 0; border-radius: 8px;
-          background: var(--accent); color: var(--accent-text); cursor: pointer; }
+  ol.rows > li { position: relative; padding: .55rem 0; }
+  .n { position: absolute; left: calc(-1 * var(--inset)); width: var(--m); padding-right: .7rem;
+       text-align: right; font: .78rem/1.6rem var(--sans); color: var(--pencil); white-space: nowrap; }
+  .state { font: 600 .95rem/1 var(--sans); margin-right: .3rem; }
+  .state.ok { color: var(--right); }
+  .state.bad { color: var(--teacher); }
+  .prompt { display: block; }
+  .attempt { color: var(--pen); }
+  .try { font: .7rem/1 var(--sans); color: var(--pencil); margin-right: .4rem; }
+  .wrong { text-decoration: line-through; text-decoration-color: var(--teacher); text-decoration-thickness: 1.5px; }
+  .fix { color: var(--teacher); margin-left: .6rem; }
+  .fix strong { font-weight: 600; }
+  .why { font-style: italic; margin-left: .45rem; }
+  .good { color: var(--right); margin-left: .5rem; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  input[type=text] { display: block; width: 100%; margin-top: .15rem; padding: .1rem 0 .2rem; font: inherit;
+                     color: var(--pen); background: transparent; border: 0; border-bottom: 1px solid var(--write);
+                     border-radius: 0; }
+  input[type=text]::placeholder { color: var(--pencil); font-style: italic; opacity: 1; }
+  input[type=text]:focus { outline: none; border-bottom-color: var(--focus); box-shadow: 0 1px 0 var(--focus); }
+
+  .foot > p { margin: .8rem 0 0; }
+  .actions { display: flex; align-items: center; gap: .5rem 1rem; margin-top: 1.1rem; flex-wrap: wrap;
+             font: .72rem/1.5 var(--sans); }
+  .send { font: 600 .8rem/1 var(--sans); white-space: nowrap; padding: .65rem 1.2rem; border: 0; border-radius: 6px;
+          background: var(--focus); color: var(--on-focus); cursor: pointer; }
+  .send:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   .send:disabled { opacity: .5; cursor: default; }
-  .foot { margin-top: 10px; }
-  .error { color: var(--bad); }
-  .summary { text-align: center; }
-  .summary strong { font-size: 22px; display: block; }
+  .error { color: var(--teacher); }
+  .grade { font-size: 1.5rem; line-height: 1.3; font-weight: 600; color: var(--teacher); margin: .2rem 0 0; }
+  .grade + p { margin: .2rem 0 0; color: var(--pencil); }
+
+  @media (max-width: 480px) {
+    :root { --m: 2.5rem; --gap: .8rem; font-size: 18px; }
+    main { padding-right: 1rem; }
+    #logo { width: 24px; height: 24px; margin-right: .5rem; }
+  }
 </style>
 </head>
 <body>
 <main>
-  <div id="top"><h1 id="title">Notebook</h1><div id="sub"><span id="session"></span><span id="conn">connecting…</span></div></div>
+  <div id="top">
+    <svg id="logo" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><defs><linearGradient id="rays"
+      gradientUnits="userSpaceOnUse" x1="0" y1="237.2" x2="0" y2="14.8"><stop offset="0"/><stop offset="0.45"/>
+      <stop offset="1"/></linearGradient></defs><path fill="url(#rays)" d="__LOGO_PATH__"/></svg>
+    <div><h1 id="title">Notebook</h1><div id="sub"><span id="session"></span><span id="conn" role="status">connecting…</span></div></div>
+  </div>
   <div id="items"></div>
   <p id="empty" class="muted">The tutor’s notes and questions will appear here.</p>
 </main>
@@ -1009,6 +1079,7 @@ const SAVED = document.getElementById("saved");   // set in a saved notebook fil
 const itemsEl = document.getElementById("items");
 const rendered = new Map();   // item id -> {key, el}
 let version = -1, sessionKey = null, firstLoad = true;
+const SMOOTH = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
@@ -1052,7 +1123,7 @@ function markdown(src) {
         const tag = hasHead && i === 0 ? "th" : "td";
         table.append(el("tr", {}, ...cells(l).map(c => el(tag, {}, ...inline(c)))));
       });
-      frag.append(table);
+      frag.append(el("div", {class: "table"}, table));
     } else if (lines.every(l => /^\s*[-*]\s+/.test(l))) {
       frag.append(el("ul", {}, ...lines.map(l => el("li", {}, ...inline(l.replace(/^\s*[-*]\s+/, ""))))));
     } else if (lines.every(l => /^\s*\d+[.)]\s+/.test(l))) {
@@ -1071,8 +1142,8 @@ function markdown(src) {
 function scoreText(score, done) {
   const [first, final, total] = score;
   if (!total) return "";
-  let t = first + "/" + total + " right first try";
-  if (final !== first && done) t += " · " + final + "/" + total + " after rewriting";
+  let t = first + " of " + total + " right first try";
+  if (final !== first && done) t += ", " + final + " of " + total + " after rewriting";
   return t;
 }
 
@@ -1080,27 +1151,33 @@ function scoreText(score, done) {
 function renderItem(item) {
   if (item.kind === "title") return el("h2", {class: "divider"}, item.text);
   if (item.kind === "note") {
-    return el("section", {class: "card note"}, item.title ? el("h2", {}, item.title) : null, markdown(item.text));
+    return el("section", {class: "note"}, item.title ? el("h2", {}, item.title) : null, markdown(item.text));
   }
   if (item.kind === "summary") {
     const [first, final, total] = item.score;
-    return el("section", {class: "card summary"},
-      el("div", {class: "muted"}, "Session score"),
-      total ? el("strong", {}, first + " / " + total + " right first try") : el("strong", {}, "No marked answers"),
-      total && final !== first ? el("div", {}, final + " / " + total + " after rewriting") : null);
+    return el("section", {class: "summary"}, el("h2", {}, "Session score"),
+      el("p", {class: "grade"}, total ? first + " of " + total + " right first try" : "No marked answers"),
+      total && final !== first ? el("p", {}, final + " of " + total + " after rewriting") : null);
   }
   return renderBatch(item);
 }
 
-function markEl(mark) {
-  if (mark.ok) return el("span", {class: "mark ok"}, "✓" + (mark.note ? " " + mark.note : ""));
-  return el("span", {class: "mark bad"}, "✗ ", el("strong", {}, mark.correct), mark.note ? " — " + mark.note : null);
+// A mark written after the answer, in the teacher's ink. The row's ✓ or ✗ goes in the margin.
+function markEl(mark, k) {
+  if (mark.ok) return mark.note || k ? el("span", {class: "good"}, "✓" + (mark.note ? " " + mark.note : "")) : null;
+  return el("span", {class: "fix"}, el("strong", {}, mark.correct), mark.note ? el("span", {class: "why"}, mark.note) : null);
+}
+function stateEl(row) {
+  const last = row.attempts.filter(a => a.text !== null).pop();
+  if (!last || !last.mark) return null;
+  return el("span", {class: "state " + (last.mark.ok ? "ok" : "bad")},
+    el("span", {"aria-hidden": "true"}, last.mark.ok ? "✓" : "✗"), el("span", {class: "sr"}, last.mark.ok ? "right" : "wrong"));
 }
 
 function renderBatch(batch) {
   const open = batch.status === "open" && !SAVED;
   const inputs = [];
-  const card = el("section", {class: "card batch"});
+  const card = el("section", {class: "batch"});
   const draftKey = (row, k) => "nb-draft-" + batch.id + "-" + row + "-" + k;
   card.append(el("header", {}, el("h2", {}, batch.title || "Questions"),
     el("span", {class: "score"}, scoreText(batch.score, batch.status === "done"))));
@@ -1111,7 +1188,7 @@ function renderBatch(batch) {
       if (a.text === null) {
         if (!open) return;
         const input = el("input", {type: "text", lang: "es", autocomplete: "off", autocapitalize: "off",
-          autocorrect: "off", spellcheck: "false", "aria-label": (k ? "Rewrite " : "Answer ") + (r + 1),
+          autocorrect: "off", spellcheck: "false", "aria-label": (k ? "Rewrite " : "Answer ") + (r + 1) + ": " + row.prompt,
           placeholder: k ? "Write it again" + (k === MAX_TRIES - 1 ? " (last try)" : "") : ""});
         input.value = store(() => sessionStorage.getItem(draftKey(r, k))) || "";
         input.addEventListener("input", () => store(() => sessionStorage.setItem(draftKey(r, k), input.value)));
@@ -1124,25 +1201,30 @@ function renderBatch(batch) {
       if (k) line.append(el("span", {class: "try"}, "try " + (k + 1)));
       line.append(a.text ? el("span", {class: a.mark && !a.mark.ok ? "wrong" : ""}, a.text)
                          : el("span", {class: "muted"}, "(no answer)"));
-      if (a.mark) line.append(markEl(a.mark));
+      const m = a.mark && markEl(a.mark, k);
+      if (m) line.append(m);
       body.append(line);
     });
-    list.append(el("li", {}, el("span", {class: "n"}, (r + 1) + "."), el("span", {class: "prompt"}, row.prompt), body));
+    list.append(el("li", {}, el("span", {class: "n"}, stateEl(row), (r + 1) + "."),
+      el("span", {class: "prompt"}, row.prompt), body));
   });
   card.append(list);
 
   const foot = el("div", {class: "foot"});
   if (open) {
     const button = el("button", {type: "button", class: "send"}, "Send");
-    const err = el("span", {class: "error"});
+    const err = el("span", {class: "error", role: "status"});
     const send = async () => {
-      button.disabled = true; err.textContent = "";
+      button.disabled = true; button.textContent = "Sending…"; err.textContent = "";
       try {
         const res = await fetch("/api/submit", {method: "POST", headers: HEAD, body: JSON.stringify({
           id: batch.id, rows: inputs.map(i => Number(i.dataset.row)), answers: inputs.map(i => i.value)})});
         if (!res.ok) throw new Error((await res.json()).error || "HTTP " + res.status);
         inputs.forEach(i => store(() => sessionStorage.removeItem(draftKey(i.dataset.row, i.dataset.k))));
-      } catch (e) { err.textContent = "Couldn’t send: " + e.message; button.disabled = false; }
+      } catch (e) {
+        err.textContent = "Couldn’t send: " + e.message;
+        button.disabled = false; button.textContent = "Send";
+      }
     };
     button.addEventListener("click", send);
     inputs.forEach((input, i) => input.addEventListener("keydown", ev => {
@@ -1151,7 +1233,7 @@ function renderBatch(batch) {
       if (i + 1 < inputs.length) inputs[i + 1].focus(); else send();
     }));
     foot.append(el("div", {class: "actions"}, button,
-      el("span", {class: "muted"}, "Enter moves to the next field; on the last one it sends."), err));
+      el("span", {class: "muted"}, "Enter goes to the next line. On the last line it sends."), err));
   } else if (SAVED && batch.status === "open") {
     foot.append(el("p", {class: "muted"}, "Not answered."));
   } else if (batch.status === "answered") {
@@ -1167,7 +1249,7 @@ function renderBatch(batch) {
 
 function render(st) {
   document.getElementById("title").textContent = st.title || "Notebook";
-  document.getElementById("session").textContent = "Session " + st.session + " · " + st.day;
+  document.getElementById("session").textContent = "Session " + st.session + ", " + st.day;
   const key = st.day + "/" + st.session;
   if (key !== sessionKey) { sessionKey = key; rendered.clear(); itemsEl.replaceChildren(); }
   let added = null, asking = null;   // the last new item; a card that now waits for input
@@ -1191,10 +1273,10 @@ function render(st) {
     const open = [...itemsEl.children].reverse().find(n => n.querySelector && n.querySelector("input"));
     if (open) { open.scrollIntoView({block: "start"}); open.focusFirst(); }
   } else if (asking) {
-    asking.scrollIntoView({behavior: "smooth", block: "start"});
+    asking.scrollIntoView({behavior: SMOOTH, block: "start"});
     asking.focusFirst();
   } else if (added) {
-    added.scrollIntoView({behavior: "smooth", block: "start"});
+    added.scrollIntoView({behavior: SMOOTH, block: "start"});
   }
   firstLoad = false;
 }
@@ -1226,7 +1308,7 @@ async function loop() {
   }
 }
 function showSaved(data) {
-  const name = "Notebook · " + data.day;
+  const name = "Notebook, " + data.day;
   document.title = name;
   document.getElementById("title").textContent = name;
   document.getElementById("conn").hidden = true;
@@ -1243,7 +1325,7 @@ if (SAVED) showSaved(JSON.parse(SAVED.textContent)); else loop();
 </script>
 </body>
 </html>
-"""
+""".replace("__LOGO_PATH__", LOGO_PATH).replace("__FAVICON__", FAVICON)
 
 if __name__ == "__main__":
     sys.exit(main())
