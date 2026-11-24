@@ -209,7 +209,7 @@ class TestAccess(NotebookCase):
         page = self.http("GET", f"/?t={self.token}", token=False)[1].decode()
         path = re.search(r' d="([^"]+)"', (LOGO / "symbol-small.svg").read_text()).group(1)
         self.assertEqual(re.search(r' d="([^"]+)"', (LOGO / "tile-small.svg").read_text()).group(1), path)
-        self.assertIn(f'<path fill="url(#rays)" d="{path}"/>', page)
+        self.assertIn(f'<path fill="currentColor"\n      d="{path}"/>', page)
         icon = re.search(r'<link rel="icon" type="image/svg\+xml" href="data:image/svg\+xml,([^"]+)">', page)
         tile = (LOGO / "tile-small.svg").read_text().replace('"', "'")
         self.assertEqual(parse.unquote(icon.group(1)), re.sub(r"<title>.*?</title>", "", tile).strip())

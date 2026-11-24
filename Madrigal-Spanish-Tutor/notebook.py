@@ -927,7 +927,7 @@ def main(argv=None):
 
 # The Aurora Polaris mark: the rays' path from ../assets/logo/symbol-small.svg (the same path is in
 # tile-small.svg). Those files are generated in the logo repository; when they change, copy the new
-# path here and don't edit it by hand. The page colours it with --ray-* (deep set on light, bright on dark).
+# path here and don't edit it by hand. The page draws it in one colour, the text colour.
 LOGO_PATH = ("M10.00 194.71L15.50 96.21A4.00 4.00 0 0 1 23.50 96.21L29.00 194.71A9.50 9.50 0 0 1 10.00 194.71Z"
              "M31.70 217.69L37.20 110.54A4.00 4.00 0 0 1 45.20 110.54L50.70 217.69A9.50 9.50 0 0 1 31.70 217.69Z"
              "M53.40 227.74L58.90 112.78A4.00 4.00 0 0 1 66.90 112.78L72.40 227.74A9.50 9.50 0 0 1 53.40 227.74Z"
@@ -957,43 +957,37 @@ PAGE = r"""<!doctype html>
 <title>Notebook</title>
 <link rel="icon" type="image/svg+xml" href="__FAVICON__">
 <style>
-  /* An exercise book: a margin line, the learner's pen (violet), the teacher's ink (pink).
-     Colours from assets/logo/GUIDELINES.md: the deep set on light, the bright set on Night. */
+  /* An exercise book in warm monochrome. Colour is scarce: one accent (Send, focus) and one
+     correction colour (the teacher's marks, the margin line). Everything else is neutral.
+     The logo is its one-colour version (assets/logo/GUIDELINES.md). */
   :root {
-    --ray-base: #0E9686; --ray-mid: #6A48D8; --ray-tip: #D9366A;
-    --paper: #fdfdfb; --ink: #0A0818; --pencil: #67636f; --line: #e8e5ec; --write: #8e899a;
-    --rule: rgba(217, 54, 106, .4); --pen: #6A48D8; --teacher: #B82A58; --right: #0B7A6D;
-    --focus: #6A48D8; --on-focus: #ffffff;
+    --bg: #fbfbfa; --fg: #1f1e1d; --muted: #696864; --border: #e9e8e6; --input-line: #8f8e8a;
+    --accent: #6A48D8; --on-accent: #ffffff; --correction: #B42E4F; --margin: rgba(180, 46, 79, .35);
     --m: 3.5rem; --gap: 1.1rem; --inset: calc(var(--m) + var(--gap));
     --serif: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, "Noto Serif", "Droid Serif", Georgia, serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --sheet: linear-gradient(var(--rule), var(--rule)) no-repeat var(--m) 0 / 1px 100%;
+    --sheet: linear-gradient(var(--margin), var(--margin)) no-repeat var(--m) 0 / 1px 100%;
     font-size: 19px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ray-base: #2BD4C0; --ray-mid: #8B6CF0; --ray-tip: #FF5C8A;
-      --paper: #0f0d17; --ink: #ece9f2; --pencil: #a29dae; --line: #2a2636; --write: #6c667b;
-      --rule: rgba(255, 92, 138, .45); --pen: #ab96f7; --teacher: #ff7aa0; --right: #2BD4C0;
-      --focus: #8B6CF0; --on-focus: #0A0818;
+      --bg: #191918; --fg: #ebeae8; --muted: #9d9c98; --border: #2d2c2a; --input-line: #71706c;
+      --accent: #9d85f2; --on-accent: #191918; --correction: #f0849b; --margin: rgba(240, 132, 155, .35);
     }
   }
   * { box-sizing: border-box; }
-  html { background: var(--paper); scroll-padding-top: 6.5rem; }
-  body { margin: 0; color: var(--ink); font: 1rem/1.6 var(--serif); }
+  html { background: var(--bg); scroll-padding-top: 6.5rem; }
+  body { margin: 0; color: var(--fg); font: 1rem/1.6 var(--serif); }
   main { max-width: calc(var(--inset) + 34rem + 1.5rem); min-height: 100vh; margin: 0 auto;
          padding: 0 1.5rem 40vh 0; background: var(--sheet); }
 
   #top { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: var(--m) 1fr;
          column-gap: var(--gap); align-items: center; padding: 1.2rem 0 .9rem; margin-bottom: 1.5rem;
-         background: var(--sheet), var(--paper); box-shadow: 0 1px 0 var(--line); }
-  #logo { justify-self: end; width: 28px; height: 28px; margin-right: .7rem; }
-  #logo stop:nth-child(1) { stop-color: var(--ray-base); }
-  #logo stop:nth-child(2) { stop-color: var(--ray-mid); }
-  #logo stop:nth-child(3) { stop-color: var(--ray-tip); }
+         background: var(--sheet), var(--bg); box-shadow: 0 1px 0 var(--border); }
+  #logo { justify-self: end; width: 28px; height: 28px; margin-right: .7rem; color: var(--fg); }
   #top h1 { font-size: 1.3rem; line-height: 1.25; font-weight: 600; margin: 0; }
-  #sub { font: .72rem/1.5 var(--sans); color: var(--pencil); display: flex; gap: .75rem; flex-wrap: wrap; }
-  #conn.off { color: var(--teacher); }
+  #sub { font: .72rem/1.5 var(--sans); color: var(--muted); display: flex; gap: .75rem; flex-wrap: wrap; }
+  #conn.off { color: var(--correction); }
 
   #items, #empty { padding-left: var(--inset); }
   #items > * { margin: 0 0 2.75rem; }
@@ -1001,9 +995,9 @@ PAGE = r"""<!doctype html>
   #items h2.divider { font-size: 1.45rem; line-height: 1.25; margin: 3.5rem 0 1.5rem; }
   #items h2.divider:first-child, #items h2.session + h2.divider { margin-top: 0; }
   #items h2.session { font-size: 1.45rem; line-height: 1.25; margin: 4rem 0 1.75rem calc(-1 * var(--inset));
-                      padding: 1.5rem 0 0 var(--inset); border-top: 1px solid var(--line); }
+                      padding: 1.5rem 0 0 var(--inset); border-top: 1px solid var(--border); }
   #items h2.session:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-  .muted { color: var(--pencil); }
+  .muted { color: var(--muted); }
 
   .note p, .note ul, .note ol { margin: .45rem 0; }
   .note ul, .note ol { padding-left: 1.2em; }
@@ -1012,45 +1006,45 @@ PAGE = r"""<!doctype html>
   .table { overflow-x: auto; margin: .6rem 0; }
   .note table { border-collapse: collapse; }
   .note th, .note td { text-align: left; vertical-align: top; padding: .25rem 1.4rem .25rem 0;
-                       border-bottom: 1px solid var(--line); }
+                       border-bottom: 1px solid var(--border); }
   .note th { font-weight: 600; }
 
   .batch > header { display: flex; justify-content: space-between; align-items: baseline; gap: .25rem 1rem;
                     flex-wrap: wrap; }
-  .score { font: .72rem/1.5 var(--sans); color: var(--pencil); }
+  .score { font: .72rem/1.5 var(--sans); color: var(--muted); }
   ol.rows { list-style: none; margin: 0; padding: 0; }
   ol.rows > li { position: relative; padding: .55rem 0; }
   .n { position: absolute; left: calc(-1 * var(--inset)); width: var(--m); padding-right: .7rem;
-       text-align: right; font: .78rem/1.6rem var(--sans); color: var(--pencil); white-space: nowrap; }
+       text-align: right; font: .78rem/1.6rem var(--sans); color: var(--muted); white-space: nowrap; }
   .state { font: 600 .95rem/1 var(--sans); margin-right: .3rem; }
-  .state.ok { color: var(--right); }
-  .state.bad { color: var(--teacher); }
-  .prompt { display: block; }
-  .attempt { color: var(--pen); }
-  .try { font: .7rem/1 var(--sans); color: var(--pencil); margin-right: .4rem; }
-  .wrong { text-decoration: line-through; text-decoration-color: var(--teacher); text-decoration-thickness: 1.5px; }
-  .fix { color: var(--teacher); margin-left: .6rem; }
+  .state.ok { color: var(--muted); }
+  .state.bad { color: var(--correction); }
+  .prompt { display: block; color: var(--muted); }   /* the printed question; the answer is the strong text */
+  .try { font: .7rem/1 var(--sans); color: var(--muted); margin-right: .4rem; }
+  .wrong { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--correction);
+           text-decoration-thickness: 1.5px; }
+  .fix { color: var(--correction); margin-left: .6rem; }
   .fix strong { font-weight: 600; }
   .why { font-style: italic; margin-left: .45rem; }
-  .good { color: var(--right); margin-left: .5rem; }
+  .good { color: var(--muted); font-style: italic; margin-left: .5rem; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   input[type=text] { display: block; width: 100%; margin-top: .15rem; padding: .1rem 0 .2rem; font: inherit;
-                     color: var(--pen); background: transparent; border: 0; border-bottom: 1px solid var(--write);
+                     color: var(--fg); background: transparent; border: 0; border-bottom: 1px solid var(--input-line);
                      border-radius: 0; }
-  input[type=text]::placeholder { color: var(--pencil); font-style: italic; opacity: 1; }
-  input[type=text]:focus { outline: none; border-bottom-color: var(--focus); box-shadow: 0 1px 0 var(--focus); }
+  input[type=text]::placeholder { color: var(--muted); font-style: italic; opacity: 1; }
+  input[type=text]:focus { outline: none; border-bottom-color: var(--accent); box-shadow: 0 1px 0 var(--accent); }
 
   .foot > p { margin: .8rem 0 0; }
   .actions { display: flex; align-items: center; gap: .5rem 1rem; margin-top: 1.1rem; flex-wrap: wrap;
              font: .72rem/1.5 var(--sans); }
   .send { font: 600 .8rem/1 var(--sans); white-space: nowrap; padding: .65rem 1.2rem; border: 0; border-radius: 6px;
-          background: var(--focus); color: var(--on-focus); cursor: pointer; }
-  .send:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+          background: var(--accent); color: var(--on-accent); cursor: pointer; }
+  .send:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .send:disabled { opacity: .5; cursor: default; }
-  .error { color: var(--teacher); }
-  .grade { font-size: 1.5rem; line-height: 1.3; font-weight: 600; color: var(--teacher); margin: .2rem 0 0; }
-  .grade + p { margin: .2rem 0 0; color: var(--pencil); }
+  .error { color: var(--correction); }
+  .grade { font-size: 1.5rem; line-height: 1.3; font-weight: 600; margin: .2rem 0 0; }
+  .grade + p { margin: .2rem 0 0; color: var(--muted); }
 
   @media (max-width: 480px) {
     :root { --m: 2.5rem; --gap: .8rem; font-size: 18px; }
@@ -1062,9 +1056,8 @@ PAGE = r"""<!doctype html>
 <body>
 <main>
   <div id="top">
-    <svg id="logo" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><defs><linearGradient id="rays"
-      gradientUnits="userSpaceOnUse" x1="0" y1="237.2" x2="0" y2="14.8"><stop offset="0"/><stop offset="0.45"/>
-      <stop offset="1"/></linearGradient></defs><path fill="url(#rays)" d="__LOGO_PATH__"/></svg>
+    <svg id="logo" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path fill="currentColor"
+      d="__LOGO_PATH__"/></svg>
     <div><h1 id="title">Notebook</h1><div id="sub"><span id="session"></span><span id="conn" role="status">connecting…</span></div></div>
   </div>
   <div id="items"></div>

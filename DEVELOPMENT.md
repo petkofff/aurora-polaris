@@ -49,11 +49,13 @@ for the layout and the rules for adding a tutor.
   `feedback --wait` / `wait` are the fallback for agents without Monitor. The page's Markdown
   renderer builds DOM nodes and never uses `innerHTML`; keep it that way.
 - The page looks like an exercise book: one column with a margin line, item numbers and ✓/✗ in the
-  margin, prompts in ink, the learner's answers in violet "pen" on writing lines (inputs with only a
-  bottom border), corrections in pink "teacher's ink". No cards, boxes or tinted backgrounds.
-  Text is a system serif stack, small interface text `system-ui`.
-- The page follows `assets/logo/GUIDELINES.md`: the deep logo colours in light mode, the bright ones
-  in dark mode, near-white paper or Night around them, and no webfont. The header mark (`LOGO_PATH`) and the favicon (`FAVICON`, a
+  margin, answers on writing lines (inputs with only a bottom border). No cards, boxes or tinted
+  backgrounds. Text is a system serif stack, small interface text `system-ui`; no webfont.
+- Colour is scarce: warm monochrome neutrals, one accent (`--accent`: Send and focus only) and one
+  colour for the teacher's marks (`--correction`: ✗, corrections, the margin line). Prompts are
+  muted and the learner's answers are full-strength text. Keep new colour out unless it means
+  something. The logo is drawn in one colour (the text colour), as `assets/logo/GUIDELINES.md` allows.
+  The header mark (`LOGO_PATH`) and the favicon (`FAVICON`, a
   `data:` URI, the only image the CSPs allow) are copied from `assets/logo/symbol-small.svg` and
   `tile-small.svg`; a test fails when they drift. When the logo changes, copy the new path in.
 - Run the tests from the tutor's folder:
