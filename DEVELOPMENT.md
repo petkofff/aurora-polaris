@@ -51,10 +51,11 @@ for the layout and the rules for adding a tutor.
 - The page looks like an exercise book: one column with a margin line, item numbers and ✓/✗ in the
   margin, answers on writing lines (inputs with only a bottom border). No cards, boxes or tinted
   backgrounds. Text is a system serif stack, small interface text `system-ui`; no webfont.
-- Colour is scarce: warm monochrome neutrals, one accent (`--accent`: Send and focus only) and one
-  colour for the teacher's marks (`--correction`: ✗, corrections, the margin line). Prompts are
-  muted and the learner's answers are full-strength text. Keep new colour out unless it means
-  something. The logo is drawn in one colour (the text colour), as `assets/logo/GUIDELINES.md` allows.
+- Colour is scarce: warm monochrome neutrals, the logo, one accent (`--accent`: Send and focus only)
+  and one colour for the teacher's marks (`--correction`: ✗, corrections, the margin line). Prompts
+  are muted and the learner's answers are full-strength text. Keep new colour out unless it means
+  something. The logo follows `assets/logo/GUIDELINES.md`: the deep colours in light mode, the bright
+  ones in dark mode.
   The header mark (`LOGO_PATH`) and the favicon (`FAVICON`, a
   `data:` URI, the only image the CSPs allow) are copied from `assets/logo/symbol-small.svg` and
   `tile-small.svg`; a test fails when they drift. When the logo changes, copy the new path in.

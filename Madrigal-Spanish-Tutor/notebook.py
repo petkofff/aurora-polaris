@@ -927,7 +927,7 @@ def main(argv=None):
 
 # The Aurora Polaris mark: the rays' path from ../assets/logo/symbol-small.svg (the same path is in
 # tile-small.svg). Those files are generated in the logo repository; when they change, copy the new
-# path here and don't edit it by hand. The page draws it in one colour, the text colour.
+# path here and don't edit it by hand. The page colours it with --ray-* (deep set on light, bright on dark).
 LOGO_PATH = ("M10.00 194.71L15.50 96.21A4.00 4.00 0 0 1 23.50 96.21L29.00 194.71A9.50 9.50 0 0 1 10.00 194.71Z"
              "M31.70 217.69L37.20 110.54A4.00 4.00 0 0 1 45.20 110.54L50.70 217.69A9.50 9.50 0 0 1 31.70 217.69Z"
              "M53.40 227.74L58.90 112.78A4.00 4.00 0 0 1 66.90 112.78L72.40 227.74A9.50 9.50 0 0 1 53.40 227.74Z"
@@ -957,10 +957,11 @@ PAGE = r"""<!doctype html>
 <title>Notebook</title>
 <link rel="icon" type="image/svg+xml" href="__FAVICON__">
 <style>
-  /* An exercise book in warm monochrome. Colour is scarce: one accent (Send, focus) and one
-     correction colour (the teacher's marks, the margin line). Everything else is neutral.
-     The logo is its one-colour version (assets/logo/GUIDELINES.md). */
+  /* An exercise book in warm monochrome. Colour is scarce: the logo, one accent (Send, focus) and
+     one correction colour (the teacher's marks, the margin line). Everything else is neutral.
+     The logo uses the deep set on light and the bright set on dark (assets/logo/GUIDELINES.md). */
   :root {
+    --ray-base: #0E9686; --ray-mid: #6A48D8; --ray-tip: #D9366A;
     --bg: #fbfbfa; --fg: #1f1e1d; --muted: #696864; --border: #e9e8e6; --input-line: #8f8e8a;
     --accent: #6A48D8; --on-accent: #ffffff; --correction: #B42E4F; --margin: rgba(180, 46, 79, .35);
     --m: 3.5rem; --gap: 1.1rem; --inset: calc(var(--m) + var(--gap));
@@ -971,6 +972,7 @@ PAGE = r"""<!doctype html>
   }
   @media (prefers-color-scheme: dark) {
     :root {
+      --ray-base: #2BD4C0; --ray-mid: #8B6CF0; --ray-tip: #FF5C8A;
       --bg: #191918; --fg: #ebeae8; --muted: #9d9c98; --border: #2d2c2a; --input-line: #71706c;
       --accent: #9d85f2; --on-accent: #191918; --correction: #f0849b; --margin: rgba(240, 132, 155, .35);
     }
@@ -984,7 +986,10 @@ PAGE = r"""<!doctype html>
   #top { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: var(--m) 1fr;
          column-gap: var(--gap); align-items: center; padding: 1.2rem 0 .9rem; margin-bottom: 1.5rem;
          background: var(--sheet), var(--bg); box-shadow: 0 1px 0 var(--border); }
-  #logo { justify-self: end; width: 28px; height: 28px; margin-right: .7rem; color: var(--fg); }
+  #logo { justify-self: end; width: 28px; height: 28px; margin-right: .7rem; }
+  #logo stop:nth-child(1) { stop-color: var(--ray-base); }
+  #logo stop:nth-child(2) { stop-color: var(--ray-mid); }
+  #logo stop:nth-child(3) { stop-color: var(--ray-tip); }
   #top h1 { font-size: 1.3rem; line-height: 1.25; font-weight: 600; margin: 0; }
   #sub { font: .72rem/1.5 var(--sans); color: var(--muted); display: flex; gap: .75rem; flex-wrap: wrap; }
   #conn.off { color: var(--correction); }
@@ -1056,8 +1061,9 @@ PAGE = r"""<!doctype html>
 <body>
 <main>
   <div id="top">
-    <svg id="logo" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path fill="currentColor"
-      d="__LOGO_PATH__"/></svg>
+    <svg id="logo" viewBox="0 0 256 256" aria-hidden="true" focusable="false"><defs><linearGradient id="rays"
+      gradientUnits="userSpaceOnUse" x1="0" y1="237.2" x2="0" y2="14.8"><stop offset="0"/><stop offset="0.45"/>
+      <stop offset="1"/></linearGradient></defs><path fill="url(#rays)" d="__LOGO_PATH__"/></svg>
     <div><h1 id="title">Notebook</h1><div id="sub"><span id="session"></span><span id="conn" role="status">connecting…</span></div></div>
   </div>
   <div id="items"></div>
