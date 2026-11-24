@@ -958,12 +958,13 @@ PAGE = r"""<!doctype html>
 <link rel="icon" type="image/svg+xml" href="__FAVICON__">
 <style>
   /* An exercise book in warm monochrome. Colour is scarce: the logo, one accent (Send, focus) and
-     one correction colour (the teacher's marks, the margin line). Everything else is neutral.
+     the teacher's two inks: sage for right (✓) and rose for corrections (✗, the margin line).
+     Everything else is neutral.
      The logo uses the deep set on light and the bright set on dark (assets/logo/GUIDELINES.md). */
   :root {
     --ray-base: #0E9686; --ray-mid: #6A48D8; --ray-tip: #D9366A;
     --bg: #fbfbfa; --fg: #1f1e1d; --muted: #696864; --border: #e9e8e6; --input-line: #8f8e8a;
-    --accent: #6A48D8; --on-accent: #ffffff; --correction: #B42E4F; --margin: rgba(180, 46, 79, .35);
+    --accent: #6A48D8; --on-accent: #ffffff; --correction: #B42E4F; --right: #4A7656; --margin: rgba(180, 46, 79, .35);
     --m: 3.5rem; --gap: 1.1rem; --inset: calc(var(--m) + var(--gap));
     --serif: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, "Noto Serif", "Droid Serif", Georgia, serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -974,7 +975,7 @@ PAGE = r"""<!doctype html>
     :root {
       --ray-base: #2BD4C0; --ray-mid: #8B6CF0; --ray-tip: #FF5C8A;
       --bg: #191918; --fg: #ebeae8; --muted: #9d9c98; --border: #2d2c2a; --input-line: #71706c;
-      --accent: #9d85f2; --on-accent: #191918; --correction: #f0849b; --margin: rgba(240, 132, 155, .35);
+      --accent: #9d85f2; --on-accent: #191918; --correction: #f0849b; --right: #8DC09B; --margin: rgba(240, 132, 155, .35);
     }
   }
   * { box-sizing: border-box; }
@@ -1022,7 +1023,7 @@ PAGE = r"""<!doctype html>
   .n { position: absolute; left: calc(-1 * var(--inset)); width: var(--m); padding-right: .7rem;
        text-align: right; font: .78rem/1.6rem var(--sans); color: var(--muted); white-space: nowrap; }
   .state { font: 600 .95rem/1 var(--sans); margin-right: .3rem; }
-  .state.ok { color: var(--muted); }
+  .state.ok { color: var(--right); }
   .state.bad { color: var(--correction); }
   .prompt { display: block; color: var(--muted); }   /* the printed question; the answer is the strong text */
   .try { font: .7rem/1 var(--sans); color: var(--muted); margin-right: .4rem; }
@@ -1031,7 +1032,7 @@ PAGE = r"""<!doctype html>
   .fix { color: var(--correction); margin-left: .6rem; }
   .fix strong { font-weight: 600; }
   .why { font-style: italic; margin-left: .45rem; }
-  .good { color: var(--muted); font-style: italic; margin-left: .5rem; }
+  .good { color: var(--right); font-style: italic; margin-left: .5rem; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   input[type=text] { display: block; width: 100%; margin-top: .15rem; padding: .1rem 0 .2rem; font: inherit;

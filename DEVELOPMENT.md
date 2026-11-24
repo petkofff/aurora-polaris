@@ -52,7 +52,8 @@ for the layout and the rules for adding a tutor.
   margin, answers on writing lines (inputs with only a bottom border). No cards, boxes or tinted
   backgrounds. Text is a system serif stack, small interface text `system-ui`; no webfont.
 - Colour is scarce: warm monochrome neutrals, the logo, one accent (`--accent`: Send and focus only)
-  and one colour for the teacher's marks (`--correction`: ✗, corrections, the margin line). Prompts
+  and the teacher's two inks: `--right` (sage: ✓ and notes on right answers) and `--correction`
+  (rose: ✗, corrections, the margin line). Prompts
   are muted and the learner's answers are full-strength text. Keep new colour out unless it means
   something. The logo follows `assets/logo/GUIDELINES.md`: the deep colours in light mode, the bright
   ones in dark mode.
